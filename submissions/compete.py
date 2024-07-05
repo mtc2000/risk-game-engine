@@ -100,39 +100,39 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
     
     # key locations
     # rfd = risk-free defend
-    # area value = value + connected_conts + rfd / keylocs
+    # area value = (value + 2 * connected_conts + rfd) / keylocs
     
-    # val: 4.67
+    # val: 5.67
     north_america_value = 5
     north_america_connected_conts = 3
     north_america_keyloc = [0, 2, 4]
     north_america_rfd = [5, 1, 6, 7, 8, 3]
     
-    # val: 2.75
+    # val: 3.5
     europe_value = 5
     europe_connected_conts = 3
     europe_keyloc = [10, 15, 13, 14]
     europe_keyloc_rfd = [9, 11, 12]
     
-    # val:　3.6
+    # val:　4.4
     asia_value = 7
     asia_connected_conts = 4
     asia_keyloc = [26, 16, 22, 24, 21]
     asia_keyloc_rfd = [25, 27, 18, 20, 23, 17, 18]
     
-    # val: 3
+    # val: 4
     south_america_value = 2
     south_america_connected_conts = 2
     south_america_keyloc = [30, 29]
     south_america_keyloc_rfd = [31, 28]
     
-    # val: 3
-    africa_connected_conts = 3
+    # val: 4
     africa_value = 3
+    africa_connected_conts = 3
     africa_keyloc = [36, 34, 33]
     africa_keyloc_rfd = [32, 37, 35]
     
-    # val: 6
+    # val: 7
     australia_connected_conts = 1
     australia_value = 2
     aus_keyloc = [40]
