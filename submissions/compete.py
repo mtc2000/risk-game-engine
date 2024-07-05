@@ -83,6 +83,7 @@ def main():
         # Send the move to the engine.
         game.send_move(choose_move(query))
 
+# 初始占地盘
 def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTerritory, claim_round: int, claim_mode: str) -> MoveClaimTerritory:
     """At the start of the game, you can claim a single unclaimed territory every turn 
     until all the territories have been claimed by players."""
@@ -97,6 +98,45 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
     africa = [32, 33, 34, 35, 36, 37]
     aus = [40, 39, 38, 41]
     
+    # key locations
+    # rfd = risk-free defend
+    # area value = value + connected_conts + rfd / keylocs
+    
+    # val: 4.67
+    north_america_value = 5
+    north_america_connected_conts = 3
+    north_america_keyloc = [0, 2, 4]
+    north_america_rfd = [5, 1, 6, 7, 8, 3]
+    
+    # val: 2.75
+    europe_value = 5
+    europe_connected_conts = 3
+    europe_keyloc = [10, 15, 13, 14]
+    europe_keyloc_rfd = [9, 11, 12]
+    
+    # val:　3.6
+    asia_value = 7
+    asia_connected_conts = 4
+    asia_keyloc = [26, 16, 22, 24, 21]
+    asia_keyloc_rfd = [25, 27, 18, 20, 23, 17, 18]
+    
+    # val: 3
+    south_america_value = 2
+    south_america_connected_conts = 2
+    south_america_keyloc = [30, 29]
+    south_america_keyloc_rfd = [31, 28]
+    
+    # val: 3
+    africa_connected_conts = 3
+    africa_value = 3
+    africa_keyloc = [36, 34, 33]
+    africa_keyloc_rfd = [32, 37, 35]
+    
+    # val: 6
+    australia_connected_conts = 1
+    australia_value = 2
+    aus_keyloc = [40]
+    aus_keyloc_rfd = [39, 41, 38]
 
     priority_aus = [40, 39, 38, 41, 24, 18, 17, 22, 19, 23, 20, 28, 16, 13, 15, 14, 25, 27, 21, 0, 2, 7, 1, 3, 4, 5, 26, 8, 6, 10, 9, 12, 11, 30, 31, 29, 35, 32, 37, 34, 33, 36]
     priority_south_america = [29, 30, 31, 28, 2, 3, 36, 8, 6, 37, 32, 33, 34, 35, 7, 1, 11, 10, 9, 12, 4, 5, 0, 13, 15, 14, 24, 18, 22, 19, 23, 20, 25, 17, 27, 21, 26, 40, 39, 38, 41]
@@ -161,7 +201,7 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
     return game.move_claim_territory(query, max_weight_territory)
 
 
-
+# 初始兵力布置
 def handle_place_initial_troop(game: Game, bot_state: BotState, query: QueryPlaceInitialTroop) -> MovePlaceInitialTroop:
     """After all the territories have been claimed, you can place a single troop on one
     of your territories each turn until each player runs out of troops."""
@@ -178,6 +218,9 @@ def handle_place_initial_troop(game: Game, bot_state: BotState, query: QueryPlac
 
     return game.move_place_initial_troop(query, min_troops_territory.territory_id)
 
+# 卡面兑换
+# + 威胁评级 （n步之内是否有很大量的兵？如果有的话兑卡防御，没有的话hold (因为卡值会增加)
+#
 
 def handle_redeem_cards(game: Game, bot_state: BotState, query: QueryRedeemCards) -> MoveRedeemCards:
     """After the claiming and placing initial troops phases are over, you can redeem any
@@ -209,6 +252,8 @@ def handle_redeem_cards(game: Game, bot_state: BotState, query: QueryRedeemCards
 
     return game.move_redeem_cards(query, [(x[0].card_id, x[1].card_id, x[2].card_id) for x in card_sets])
 
+# 回合内兵力分布
+#
 
 def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistributeTroops) -> MoveDistributeTroops:
     """After you redeem cards (you may have chosen to not redeem any), you need to distribute
@@ -261,6 +306,11 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
 
     return game.move_distribute_troops(query, distributions)
 
+# 进攻策略
+# + 是否进攻？ 如果损失不大，进攻拿卡
+# + 进攻优先级： 一波推 > 占领完整大陆 > 破坏完整大陆 > 其他
+# + 优先级计算加入 est. battle cost?
+#
 
 def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[MoveAttack, MoveAttackPass]:
     """After the troop phase of your turn, you may attack any number of times until you decide to
@@ -325,6 +375,7 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[
     return game.move_attack_pass(query)
 
 
+
 def handle_troops_after_attack(game: Game, bot_state: BotState, query: QueryTroopsAfterAttack) -> MoveTroopsAfterAttack:
     """After conquering a territory in an attack, you must move troops to the new territory."""
 
@@ -358,7 +409,7 @@ def handle_troops_after_attack(game: Game, bot_state: BotState, query: QueryTroo
 
     return game.move_troops_after_attack(query, troops_to_move)
 
-
+# 可以忽略
 def handle_defend(game: Game, bot_state: BotState, query: QueryDefend) -> MoveDefend:
     """If you are being attacked by another player, you must choose how many troops to defend with."""
 
