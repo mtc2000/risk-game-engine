@@ -44,7 +44,7 @@ def main():
     # attackmode = 0: normal attack; 1: conquer the continent; 2: attack the weakest player to try eliminate
     attackmode = 0
 
-    claim_mode = "australia" 
+    claim_mode = ["australia"]
     claim_round = 0
    
     # Respond to the engine's queries with your moves.
@@ -93,13 +93,13 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
     north_america = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     europe = [9, 10, 11, 12, 13, 14, 15]
     asia = [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
-    south_america = [28, 29, 30, 31]
+    south_america = [29, 30, 31, 28]
     africa = [32, 33, 34, 35, 36, 37]
     aus = [40, 39, 38, 41]
     
 
-    priority_aus = [40, 39, 38, 41, 24, 18, 22, 13, 15, 14, 19, 23, 20, 25, 17, 27, 21, 28, 16, 0, 2, 7, 1, 3, 4, 5, 26, 8, 6, 10, 9, 12, 11, 30, 31, 29, 35, 32, 37, 34, 33, 36]
-    priority_south_america = [29, 30, 31, 28, 2, 3, 36, 8, 6, 37, 32, 33, 34, 35, 7, 1, 10, 9, 12, 11, 4, 5, 0, 13, 15, 14, 24, 18, 22, 19, 23, 20, 25, 17, 27, 21, 26, 40, 39, 38, 41]
+    priority_aus = [40, 39, 38, 41, 24, 18, 17, 22, 19, 23, 20, 28, 16, 13, 15, 14, 25, 27, 21, 0, 2, 7, 1, 3, 4, 5, 26, 8, 6, 10, 9, 12, 11, 30, 31, 29, 35, 32, 37, 34, 33, 36]
+    priority_south_america = [29, 30, 31, 28, 2, 3, 36, 8, 6, 37, 32, 33, 34, 35, 7, 1, 11, 10, 9, 12, 4, 5, 0, 13, 15, 14, 24, 18, 22, 19, 23, 20, 25, 17, 27, 21, 26, 40, 39, 38, 41]
 
     def is_continent_contested(continent):
         for territory in continent:
@@ -129,22 +129,22 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
         if not is_continent_contested(aus):
             for territory in aus:
                 if territory in unclaimed_territories:
-                    claim_mode = "australia"
+                    claim_mode[0] = "australia"
                     return game.move_claim_territory(query, territory)
             
         if not is_continent_contested(south_america):
             for territory in south_america:
                 if territory in unclaimed_territories:
-                    claim_mode = "south_america"
+                    claim_mode[0] = "south_america"
                     return game.move_claim_territory(query, territory)
-        claim_mode = "in_group"
+        claim_mode[0] = "in_group"
         max_weight_territory = max(unclaimed_territories, key=lambda t: bfs_weight(t))
     else:
-        if claim_mode == "australia":
+        if claim_mode[0] == "australia":
             for territory in priority_aus:
                 if territory in unclaimed_territories:
                     return game.move_claim_territory(query, territory)
-        elif claim_mode == "south_america":
+        elif claim_mode[0] == "south_america":
             for territory in priority_south_america:
                 if territory in unclaimed_territories:
                     return game.move_claim_territory(query, territory)
@@ -277,7 +277,7 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[
         for candidate_target in territories:
             candidate_attackers = sorted(list(set(game.state.map.get_adjacent_to(candidate_target)) & set(my_territories)), key=lambda x: game.state.territories[x].troops, reverse=True)
             for candidate_attacker in candidate_attackers:
-                threshhold = 3 if len(game.state.recording) < 600 else 8
+                threshhold = 2 if len(game.state.recording) < 600 else 5
                 if game.state.territories[candidate_attacker].troops - game.state.territories[candidate_target].troops > threshhold:
                     return game.move_attack(query, candidate_attacker, candidate_target, min(3, game.state.territories[candidate_attacker].troops - 1))
 
@@ -404,28 +404,25 @@ def handle_fortify(game: Game, bot_state: BotState, query: QueryFortify) -> Unio
     strongest_territory = sorted_territories[0]
     second_strongest_territory = sorted_territories[1] if len(sorted_territories) > 1 else None
     
-    # If not directly adjacent, use find_shortest_path_from_vertex_to_set to find the best path
-    if second_strongest_territory:
-        shortest_path = find_shortest_path_from_vertex_to_set(game, second_strongest_territory, {strongest_territory})
+    if border_sorted_territories:
+        strongest_border_territory = border_sorted_territories[0]
     else:
-        shortest_path = []
-    if len(shortest_path) > 0 and game.state.territories[shortest_path[0]].troops > 1:
-        # Move troops from the first step in the path to the next step
-        return game.move_fortify(query, shortest_path[0], shortest_path[1], game.state.territories[shortest_path[0]].troops - 1)
+        strongest_border_territory = None
 
-    # Fallback: prioritize moving troops from border territories
-    for territory in border_sorted_territories:
-        if game.state.territories[territory].troops > 1 and game.state.map.is_adjacent(territory, strongest_territory):
-            troops_to_move = game.state.territories[territory].troops - 1
-            return game.move_fortify(query, territory, strongest_territory, troops_to_move)
+    if strongest_border_territory:
+        # 优先将非边界区域的部队移动到最强的边界区域
+        for territory in non_border_sorted_territories:
+            if game.state.territories[territory].troops > 1 and game.state.map.is_adjacent(territory, strongest_border_territory):
+                troops_to_move = game.state.territories[territory].troops - 1
+                return game.move_fortify(query, territory, strongest_border_territory, troops_to_move)
 
-    # As an additional fallback, check non-border territories
-    for territory in non_border_sorted_territories:
-        if game.state.territories[territory].troops > 1 and game.state.map.is_adjacent(territory, strongest_territory):
-            troops_to_move = game.state.territories[territory].troops - 1
-            return game.move_fortify(query, territory, strongest_territory, troops_to_move)
+        # 其次将其他边界区域的部队移动到最强的边界区域？？ 
+        for territory in border_sorted_territories[1:]:
+            if game.state.territories[territory].troops > 1 and game.state.map.is_adjacent(territory, strongest_border_territory):
+                troops_to_move = game.state.territories[territory].troops - 1
+                return game.move_fortify(query, territory, strongest_border_territory, troops_to_move)
+        #后面再改吧 >_<
 
-    # If no valid move found, pass the fortify turn
     return game.move_fortify_pass(query)
 
 
