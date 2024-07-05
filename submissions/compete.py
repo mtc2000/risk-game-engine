@@ -37,11 +37,17 @@ def main():
     # track the state of the game.
     game = Game()
     bot_state = BotState()
-    print(game.state.map)
+    
+    # 0: normal attack, move all the troops - 1 to the new territory; 1: split attack: move the minimum amount of troop possible to let the original attack territory attack another adjacent territory once again
+    attackflag = 0
+
+    # attackmode = 0: normal attack; 1: conquer the continent; 2: attack the weakest player to try eliminate
+    attackmode = 0
+
+    claim_mode = "australia" 
    
     # Respond to the engine's queries with your moves.
     while True:
-
         # Get the engine's query (this will block until you receive a query).
         query = game.get_next_query()
 
@@ -49,7 +55,7 @@ def main():
         def choose_move(query: QueryType) -> MoveType:
             match query:
                 case QueryClaimTerritory() as q:
-                    return handle_claim_territory(game, bot_state, q)
+                    return handle_claim_territory(game, bot_state, q, claim_mode)
 
                 case QueryPlaceInitialTroop() as q:
                     return handle_place_initial_troop(game, bot_state, q)
@@ -74,33 +80,85 @@ def main():
         
         # Send the move to the engine.
         game.send_move(choose_move(query))
-                
 
-def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTerritory) -> MoveClaimTerritory:
+def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTerritory, claim_mode: str) -> MoveClaimTerritory:
     """At the start of the game, you can claim a single unclaimed territory every turn 
     until all the territories have been claimed by players."""
 
     unclaimed_territories = game.state.get_territories_owned_by(None)
     my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
 
-    # 西半球->东半球
-    # priority = [28, 30, 29, 0, 2, 7, 3, 4, 31, 35, 32, 36, 10, 9, 5, 1, 8, 6, 12, 15, 11, 13, 37, 34, 33, 14, 20, 24, 27, 18, 19, 26, 16, 21, 23, 25, 17, 22, 38, 39, 40, 41]
-    #澳洲->拉美
-    # priority = [28, 30, 31, 29, 35, 32, 37, 34, 33, 36, 38, 39, 40, 41, 0, 2, 7, 1, 3, 4, 5, 8, 6, 10, 9, 12, 15, 11, 13, 14, 20, 24, 27, 18, 19, 26, 16, 21, 23, 25, 17, 22]
+    claim_round += 1
+    
+    north_america = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    europe = [9, 10, 11, 12, 13, 14, 15]
+    asia = [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
+    south_america = [28, 29, 30, 31]
+    africa = [32, 33, 34, 35, 36, 37]
+    aus = [40, 39, 38, 41]
+    
 
-    #
-    priority = [40, 39, 38, 41, 24, 18, 22, 13, 15, 14, 19, 23, 20, 25, 17, 27, 21, 28, 16, 0, 2, 7, 1, 3, 4, 5, 26, 8, 6, 10, 9, 12, 11, 30, 31, 29, 35, 32, 37, 34, 33, 36]
+    priority_aus = [40, 39, 38, 41, 24, 18, 22, 13, 15, 14, 19, 23, 20, 25, 17, 27, 21, 28, 16, 0, 2, 7, 1, 3, 4, 5, 26, 8, 6, 10, 9, 12, 11, 30, 31, 29, 35, 32, 37, 34, 33, 36]
+    priority_south_america = [29, 30, 31, 28, 2, 3, 36, 8, 6, 37, 32, 33, 34, 35, 7, 1, 10, 9, 12, 11, 4, 5, 0, 13, 15, 14, 24, 18, 22, 19, 23, 20, 25, 17, 27, 21, 26, 40, 39, 38, 41]
 
-    # We will try to always pick new territories that are next to ones that we own,
-    # or a random one if that isn't possible.
-    adjacent_territories = game.state.get_all_adjacent_territories(my_territories)
+    def is_continent_contested(continent):
+        for territory in continent:
+            if territory not in unclaimed_territories and territory not in my_territories:
+                return True
+        return False
+    def bfs_weight(territory: int) -> int:
+        queue = deque([territory])
+        visited = set()
+        count = 0
 
-    for territory in priority:
-        if territory in unclaimed_territories:
-            selected_territory = territory
-            break
+        while queue:
+            current = queue.popleft()
+            if current in visited:
+                continue
 
-    return game.move_claim_territory(query, selected_territory)
+            visited.add(current)
+            if current in unclaimed_territories:
+                count += 1
+                for neighbor in game.state.map.get_adjacent_to(current):
+                    if neighbor not in visited:
+                        queue.append(neighbor)
+
+        return count
+
+    if len(game.state.recording) <= 6:
+        if not is_continent_contested(aus):
+            for territory in aus:
+                if territory in unclaimed_territories:
+                    claim_mode = "australia"
+                    return game.move_claim_territory(query, territory)
+            
+        if not is_continent_contested(south_america):
+            for territory in south_america:
+                if territory in unclaimed_territories:
+                    claim_mode = "south_america"
+                    return game.move_claim_territory(query, territory)
+        claim_mode = "in_group"
+        max_weight_territory = max(unclaimed_territories, key=lambda t: bfs_weight(t))
+    else:
+        if claim_mode == "australia":
+            for territory in priority_aus:
+                if territory in unclaimed_territories:
+                    return game.move_claim_territory(query, territory)
+        elif claim_mode == "south_america":
+            for territory in priority_south_america:
+                if territory in unclaimed_territories:
+                    return game.move_claim_territory(query, territory)
+        else:
+            # try get the adj territories for our centre choice, fallback: claim base on the priority list
+            adjacent_territories = game.state.get_all_adjacent_territories(my_territories)
+            available = list(set(unclaimed_territories) & set(adjacent_territories))
+            if len(available) != 0:
+                max_weight_territory = max(available, key=lambda t: bfs_weight(t))
+            else:
+                max_weight_territory = max(unclaimed_territories, key=lambda t: bfs_weight(t))
+            return game.move_claim_territory(query, max_weight_territory)
+
+    return game.move_claim_territory(query, max_weight_territory)
 
 
 
@@ -219,7 +277,8 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[
         for candidate_target in territories:
             candidate_attackers = sorted(list(set(game.state.map.get_adjacent_to(candidate_target)) & set(my_territories)), key=lambda x: game.state.territories[x].troops, reverse=True)
             for candidate_attacker in candidate_attackers:
-                if game.state.territories[candidate_attacker].troops > 1:
+                threshhold = 3 if len(game.state.recording) < 600 else 8
+                if game.state.territories[candidate_attacker].troops - game.state.territories[candidate_target].troops > threshhold:
                     return game.move_attack(query, candidate_attacker, candidate_target, min(3, game.state.territories[candidate_attacker].troops - 1))
 
 
