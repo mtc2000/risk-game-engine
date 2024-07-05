@@ -158,7 +158,11 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
                 max_weight_territory = max(unclaimed_territories, key=lambda t: bfs_weight(t))
             return game.move_claim_territory(query, max_weight_territory)
 
-    return game.move_claim_territory(query, max_weight_territory)
+    for territory in priority_aus:
+        if territory in unclaimed_territories:
+            return game.move_claim_territory(query, territory)
+
+    return game.move_claim_territory(query)
 
 
 
@@ -278,7 +282,7 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[
             candidate_attackers = sorted(list(set(game.state.map.get_adjacent_to(candidate_target)) & set(my_territories)), key=lambda x: game.state.territories[x].troops, reverse=True)
             for candidate_attacker in candidate_attackers:
                 threshhold = 2 if len(game.state.recording) < 600 else 5
-                if game.state.territories[candidate_attacker].troops - game.state.territories[candidate_target].troops > threshhold:
+                if game.state.territories[candidate_attacker].troops - game.state.territories[candidate_target].troops >= threshhold:
                     return game.move_attack(query, candidate_attacker, candidate_target, min(3, game.state.territories[candidate_attacker].troops - 1))
 
 
@@ -412,9 +416,11 @@ def handle_fortify(game: Game, bot_state: BotState, query: QueryFortify) -> Unio
     if strongest_border_territory:
         # 优先将非边界区域的部队移动到最强的边界区域
         for territory in non_border_sorted_territories:
-            if game.state.territories[territory].troops > 1 and game.state.map.is_adjacent(territory, strongest_border_territory):
-                troops_to_move = game.state.territories[territory].troops - 1
-                return game.move_fortify(query, territory, strongest_border_territory, troops_to_move)
+            if game.state.territories[territory].troops > 1:
+                for neighbor in game.state.map.get_adjacent_to(territory):
+                    if neighbor in border_territories:
+                        troops_to_move = game.state.territories[territory].troops - 1
+                        return game.move_fortify(query, territory, neighbor, troops_to_move)
 
         # 其次将其他边界区域的部队移动到最强的边界区域？？ 
         for territory in border_sorted_territories[1:]:
