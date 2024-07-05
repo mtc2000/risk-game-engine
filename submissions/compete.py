@@ -84,7 +84,7 @@ def main():
         game.send_move(choose_move(query))
 
 # 初始占地盘
-def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTerritory, claim_round: int, claim_mode: str) -> MoveClaimTerritory:
+def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTerritory, claim_round: int, claim_mode: list[str]) -> MoveClaimTerritory:
     """At the start of the game, you can claim a single unclaimed territory every turn 
     until all the territories have been claimed by players."""
 
