@@ -138,7 +138,7 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
     aus_keyloc = [40]
     aus_keyloc_rfd = [39, 41, 38]
 
-    priority_aus = [40, 39, 38, 41, 24, 18, 17, 22, 19, 23, 20, 28, 16, 13, 15, 14, 25, 27, 21, 0, 2, 7, 1, 3, 4, 5, 26, 8, 6, 10, 9, 12, 11, 30, 31, 29, 35, 32, 37, 34, 33, 36]
+    priority_aus = [40, 39, 38, 41, 24, 18, 17, 22, 19, 23, 20, 16, 13, 15, 14, 25, 27, 21, 0, 2, 7, 1, 3, 4, 5, 26, 8, 6, 10, 9, 12, 11, 30, 31, 29, 28, 35, 32, 37, 34, 33, 36]
     priority_south_america = [29, 30, 31, 28, 2, 3, 36, 8, 6, 37, 32, 33, 34, 35, 7, 1, 11, 10, 9, 12, 4, 5, 0, 13, 15, 14, 24, 18, 22, 19, 23, 20, 25, 17, 27, 21, 26, 40, 39, 38, 41]
 
     def is_continent_contested(continent):
@@ -162,7 +162,6 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
                 for neighbor in game.state.map.get_adjacent_to(current):
                     if neighbor not in visited:
                         queue.append(neighbor)
-
         return count
 
     if claim_round == 1:
