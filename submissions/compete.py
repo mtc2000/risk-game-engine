@@ -200,8 +200,10 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
     for territory in priority_aus:
         if territory in unclaimed_territories:
             return game.move_claim_territory(query, territory)
-
-    return game.move_claim_territory(query)
+    
+    # unreachable code
+    a_random_unclaimed_territory = random.choice(unclaimed_territories)
+    return game.move_claim_territory(query, a_random_unclaimed_territory)
 
 
 # 初始兵力布置
