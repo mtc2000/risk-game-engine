@@ -45,9 +45,11 @@ def main():
     attackmode = 0
 
     claim_mode = "australia" 
+    claim_round = 0
    
     # Respond to the engine's queries with your moves.
     while True:
+        claim_round += 1
         # Get the engine's query (this will block until you receive a query).
         query = game.get_next_query()
 
@@ -55,7 +57,7 @@ def main():
         def choose_move(query: QueryType) -> MoveType:
             match query:
                 case QueryClaimTerritory() as q:
-                    return handle_claim_territory(game, bot_state, q, claim_mode)
+                    return handle_claim_territory(game, bot_state, q, claim_round, claim_mode)
 
                 case QueryPlaceInitialTroop() as q:
                     return handle_place_initial_troop(game, bot_state, q)
@@ -81,14 +83,12 @@ def main():
         # Send the move to the engine.
         game.send_move(choose_move(query))
 
-def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTerritory, claim_mode: str) -> MoveClaimTerritory:
+def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTerritory, claim_round: int, claim_mode: str) -> MoveClaimTerritory:
     """At the start of the game, you can claim a single unclaimed territory every turn 
     until all the territories have been claimed by players."""
 
     unclaimed_territories = game.state.get_territories_owned_by(None)
     my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
-
-    claim_round += 1
     
     north_america = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     europe = [9, 10, 11, 12, 13, 14, 15]
@@ -125,7 +125,7 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
 
         return count
 
-    if len(game.state.recording) <= 6:
+    if claim_round == 1:
         if not is_continent_contested(aus):
             for territory in aus:
                 if territory in unclaimed_territories:
