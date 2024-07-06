@@ -39,10 +39,18 @@ def main():
     bot_state = BotState()
     
     # 0: normal attack, move all the troops - 1 to the new territory; 1: split attack: move the minimum amount of troop possible to let the original attack territory attack another adjacent territory once again
-    attackflag = 0
+    attack_move_flag = [0]
 
-    # attackmode = 0: normal attack; 1: conquer the continent; 2: attack the weakest player to try eliminate
-    attackmode = 0
+    # conquer the continent; 2: attack the weakest player to try eliminate
+    # 进攻策略
+    # + 是否进攻？ 如果损失不大，进攻拿卡
+    # + 进攻优先级： 一波推 > 占领完整大陆 > 破坏完整大陆 > 其他
+    
+    # 在部署兵力阶段判断我们的进攻模式。
+    # 部署模式第一轮我们可以直接判断需要部署兵力的所有格子以及相对应的兵力数量 -> 在第一轮产生一个队列并在之后的query执行
+
+    # 进攻模式汇总: no_attack, conquer_continent, attack_weakest, harrass_continent
+    attackmode = ["no_attack"]
 
     claim_mode = ["australia"]
     claim_round = 0
@@ -206,22 +214,65 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
     return game.move_claim_territory(query, a_random_unclaimed_territory)
 
 
-# 初始兵力布置
+# # 初始兵力布置
+# def handle_place_initial_troop(game: Game, bot_state: BotState, query: QueryPlaceInitialTroop) -> MovePlaceInitialTroop:
+#     """After all the territories have been claimed, you can place a single troop on one
+#     of your territories each turn until each player runs out of troops."""
+    
+#     # We will place troops along the territories on our border.
+#     border_territories = game.state.get_all_border_territories(
+#         game.state.get_territories_owned_by(game.state.me.player_id)
+#     )
+
+#     # We will place a troop in the border territory with the least troops currently
+#     # on it. This should give us close to an equal distribution.
+#     border_territory_models = [game.state.territories[x] for x in border_territories]
+#     min_troops_territory = min(border_territory_models, key=lambda x: x.troops)
+
+#     return game.move_place_initial_troop(query, min_troops_territory.territory_id)
+
 def handle_place_initial_troop(game: Game, bot_state: BotState, query: QueryPlaceInitialTroop) -> MovePlaceInitialTroop:
     """After all the territories have been claimed, you can place a single troop on one
     of your territories each turn until each player runs out of troops."""
     
-    # We will place troops along the territories on our border.
-    border_territories = game.state.get_all_border_territories(
-        game.state.get_territories_owned_by(game.state.me.player_id)
-    )
+    # 计算大洲优先级
+    continent_priorities = calculate_continent_priority(game)
+    continent_priority_map = {continent: priority for continent, priority in continent_priorities}
 
-    # We will place a troop in the border territory with the least troops currently
-    # on it. This should give us close to an equal distribution.
-    border_territory_models = [game.state.territories[x] for x in border_territories]
-    min_troops_territory = min(border_territory_models, key=lambda x: x.troops)
+    # 获取所有边界领土
+    my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
+    border_territories = game.state.get_all_border_territories(my_territories)
 
-    return game.move_place_initial_troop(query, min_troops_territory.territory_id)
+    # 获取每个领土所在的大洲
+    territory_to_continent = {}
+    continents = {
+        "north_america": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        "europe": [9, 10, 11, 12, 13, 14, 15],
+        "asia": [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],
+        "south_america": [28, 29, 30, 31],
+        "africa": [32, 33, 34, 35, 36, 37],
+        "australia": [40, 39, 38, 41]
+    }
+    for continent, territories in continents.items():
+        for territory in territories:
+            territory_to_continent[territory] = continent
+
+    # 筛选边界领土并计算优先级
+    border_territory_priorities = []
+    for territory in border_territories:
+        continent = territory_to_continent[territory]
+        priority = continent_priority_map[continent]
+        border_territory_priorities.append((territory, priority))
+
+    # 按优先级排序边界领土
+    border_territory_priorities.sort(key=lambda x: x[1], reverse=True)
+
+    # 在优先级最高的边界领土上布置部队
+    border_territory_ids = [territory for territory, priority in border_territory_priorities]
+    min_troops_territory = min(border_territory_ids, key=lambda x: game.state.territories[x].troops)
+
+    return game.move_place_initial_troop(query, min_troops_territory)
+
 
 # 卡面兑换
 # + 威胁评级 （n步之内是否有很大量的兵？如果有的话兑卡防御，没有的话hold (因为卡值会增加)
@@ -312,8 +363,8 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
     return game.move_distribute_troops(query, distributions)
 
 # 大洲优先级计算
-def calculate_continent_priority(game: Game) -> List[Tuple[str, float]]:
-    """计算每个大洲的优先级，并按优先级排序返回。"""
+def calculate_continent_priority(game: Game) -> list[Tuple[str, float]]:
+    # 计算每个大洲的优先级，并按优先级排序返回
     continent_bonus = {
         "north_america": 5,
         "europe": 5,
@@ -352,17 +403,58 @@ def calculate_continent_priority(game: Game) -> List[Tuple[str, float]]:
         owned_territories = len(set(territories) & set(my_territories))
         enemy_territories_count = len(set(territories) & enemy_territories)
 
-        priority_score = (
-            continent_bonus[continent] * 20 / control_difficulty[continent]
-            + owned_territories * 10
-            - enemy_territories_count * 20
-        )
+        # 如果我们已经完全占领了该大洲，将优先级设置为最低
+        if owned_territories == total_territories:
+            priority_score = float('-inf')  # 优先级最低
+        else:
+            priority_score = (
+                continent_bonus[continent] * 20 / control_difficulty[continent]
+                + owned_territories * 10
+                - enemy_territories_count * 20
+            )
         continent_priorities.append((continent, priority_score))
 
     # 按优先级排序大洲
     continent_priorities.sort(key=lambda x: x[1], reverse=True)
     
     return continent_priorities
+
+def calculate_continent_forces(game: Game) -> dict[str, Tuple[int, int]]:
+    # 计算每个大洲中敌方的总兵力和我方的总兵力 tuple: (我方兵力, 敌方兵力)
+    continents = {
+        "north_america": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        "europe": [9, 10, 11, 12, 13, 14, 15],
+        "asia": [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],
+        "south_america": [28, 29, 30, 31],
+        "africa": [32, 33, 34, 35, 36, 37],
+        "australia": [40, 39, 38, 41]
+    }
+
+    my_territories = set(game.state.get_territories_owned_by(game.state.me.player_id))
+    forces = {}
+
+    for continent, territories in continents.items():
+        my_forces = sum(game.state.territories[t].troops for t in territories if t in my_territories)
+        enemy_forces = sum(game.state.territories[t].troops for t in territories if t not in my_territories)
+        forces[continent] = (my_forces, enemy_forces)
+    
+    return forces
+
+def adjust_priority_based_on_forces(priorities: list[Tuple[str, float]], forces: dict[str, Tuple[int, int]]) -> list[Tuple[str, float]]:
+    # 根据兵力调整大洲的优先级
+    adjusted_priorities = []
+
+    # TODO: 调整优先级
+    for continent, priority in priorities:
+        my_forces, enemy_forces = forces[continent]
+        force_diff = my_forces - enemy_forces
+        adjusted_priority = priority + force_diff * 0.1
+        adjusted_priorities.append((continent, adjusted_priority))
+
+    # 按调整后的优先级排序
+    adjusted_priorities.sort(key=lambda x: x[1], reverse=True)
+    
+    return adjusted_priorities
 
 # 进攻策略
 # + 是否进攻？ 如果损失不大，进攻拿卡
@@ -385,45 +477,12 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[
         for candidate_target in territories:
             candidate_attackers = sorted(list(set(game.state.map.get_adjacent_to(candidate_target)) & set(my_territories)), key=lambda x: game.state.territories[x].troops, reverse=True)
             for candidate_attacker in candidate_attackers:
-                threshhold = 2 if len(game.state.recording) < 600 else 5
+                threshhold = 2 if len(game.state.recording) < 600 else 4
+                if len(game.state.recording) > 1000:
+                    threshhold = 7
                 if game.state.territories[candidate_attacker].troops - game.state.territories[candidate_target].troops >= threshhold:
                     return game.move_attack(query, candidate_attacker, candidate_target, min(3, game.state.territories[candidate_attacker].troops - 1))
 
-
-    # if len(game.state.recording) < 4000:
-    #     # We will check if anyone attacked us in the last round.
-    #     new_records = game.state.recording[game.state.new_records:]
-    #     enemy = None
-    #     for record in new_records:
-    #         match record:
-    #             case MoveAttack() as r:
-    #                 if r.defending_territory in set(my_territories):
-    #                     enemy = r.move_by_player
-
-    #     # If we don't have an enemy yet, or we feel angry, this player will become our enemy.
-    #     if enemy != None:
-    #         if bot_state.enemy == None or random.random() < 0.05:
-    #             bot_state.enemy = enemy
-        
-    #     # If we have no enemy, we will pick the player with the weakest territory bordering us, and make them our enemy.
-    #     else:
-    #         weakest_territory = min(bordering_territories, key=lambda x: game.state.territories[x].troops)
-    #         bot_state.enemy = game.state.territories[weakest_territory].occupier
-            
-    #     # We will attack their weakest territory that gives us a favourable battle if possible.
-    #     enemy_territories = list(set(bordering_territories) & set(game.state.get_territories_owned_by(enemy)))
-    #     move = attack_weakest(enemy_territories)
-    #     if move != None:
-    #         return move
-        
-    #     # Otherwise we will attack anyone most of the time.
-    #     if random.random() < 0.8:
-    #         move = attack_weakest(bordering_territories)
-    #         if move != None:
-    #             return move
-
-    # In the late game, we will attack anyone adjacent to our strongest territories (hopefully our doomstack).
-    # else:
     strongest_territories = sorted(my_territories, key=lambda x: game.state.territories[x].troops, reverse=True)
     for territory in strongest_territories:
         move = attack_weakest(list(set(game.state.map.get_adjacent_to(territory)) - set(my_territories)))
@@ -490,8 +549,6 @@ def handle_fortify(game: Game, bot_state: BotState, query: QueryFortify) -> Unio
 
     # We will always fortify towards the most powerful player (player with most troops on the map) to defend against them.
     my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
-
-    #查找自己的所有区域 -> 找到自己的区域强度顺序 -> 将自己的第二强的区域的troop移动到最强的，但是同时考虑区域边界，适当的为区域的边界增加权重以应对敌人
 
 
     total_troops_per_player = {}
