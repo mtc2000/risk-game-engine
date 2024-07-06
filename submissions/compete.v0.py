@@ -477,31 +477,11 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[
         for candidate_target in territories:
             candidate_attackers = sorted(list(set(game.state.map.get_adjacent_to(candidate_target)) & set(my_territories)), key=lambda x: game.state.territories[x].troops, reverse=True)
             for candidate_attacker in candidate_attackers:
-                threshhold = 2
-                if len(game.state.recording) < 600:
-                    pass
-                elif len(game.state.recording) < 1000:
-                    threshhold = 4
-                else:
+                threshhold = 2 if len(game.state.recording) < 600 else 4
+                if len(game.state.recording) > 1000:
                     threshhold = 7
                 if game.state.territories[candidate_attacker].troops - game.state.territories[candidate_target].troops >= threshhold:
-                    # maximum attacking power
-                    # return game.move_attack(
-                    #     query,
-                    #     candidate_attacker,
-                    #     candidate_target,
-                    #     min(3, game.state.territories[candidate_attacker].troops - 1)
-                    # )
-                    return game.move_attack(
-                        query,
-                        candidate_attacker,
-                        candidate_target,
-                        min(
-                            3,
-                            game.state.territories[candidate_attacker].troops - 1,
-                            game.state.territories[candidate_target].troops
-                        )
-                    )
+                    return game.move_attack(query, candidate_attacker, candidate_target, min(3, game.state.territories[candidate_attacker].troops - 1))
 
     strongest_territories = sorted(my_territories, key=lambda x: game.state.territories[x].troops, reverse=True)
     for territory in strongest_territories:
@@ -524,13 +504,13 @@ def handle_troops_after_attack(game: Game, bot_state: BotState, query: QueryTroo
     move_attack = cast(MoveAttack, game.state.recording[record_attack.move_attack_id])
 
     attacking_territory = move_attack.attacking_territory
-    attacking_territory_troops = game.state.territories[attacking_territory].troops
     conquered_territory = move_attack.defending_territory
-    attacking_troops = move_attack.attacking_troops
 
     # TODO: 检查是否所有相邻的区域都是自己的，如果是的话我们尝试只留1个兵力，否则的话我们根据周围的敌人数量来决定留下多少兵力？
     adjacent_territories = game.state.map.get_adjacent_to(conquered_territory)
     all_adjacent_owned = all(adj in my_territories for adj in adjacent_territories)
+
+    attacking_troops = game.state.territories[attacking_territory].troops
 
     # 有问题，暂时弃用。
     # if all_adjacent_owned:
@@ -542,14 +522,7 @@ def handle_troops_after_attack(game: Game, bot_state: BotState, query: QueryTroo
     #     )
     #     troops_to_move = max(1, min(attacking_troops - 1, max_adjacent_enemy_troops + 1))
 
-    # troops_to_move = attacking_territory_troops - 1
-
-    troops_to_move = max(attacking_territory_troops - 3, attacking_troops)
-
-    # troops_to_move = max(
-    #     min(3, attacking_troops),
-    #     attacking_territory_troops // 2
-    # )
+    troops_to_move = attacking_troops - 1
 
     return game.move_troops_after_attack(query, troops_to_move)
 
