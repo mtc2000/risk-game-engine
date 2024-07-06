@@ -103,7 +103,7 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
     north_america = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     europe = [10, 9, 15, 11, 12, 13, 14]
     asia = [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
-    south_america = [30, 31, 29, 28]
+    south_america = [28, 31, 29, 30]
     africa = [32, 33, 34, 35, 36, 37]
     aus = [40, 39, 38, 41]
     
@@ -148,7 +148,7 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
     aus_keyloc_rfd = [39, 41, 38]
 
     priority_aus = [40, 39, 38, 41, 24, 18, 17, 22, 19, 23, 20, 16, 13, 15, 14, 25, 27, 21, 0, 2, 7, 1, 3, 4, 5, 26, 8, 6, 10, 9, 12, 11, 30, 31, 29, 28, 35, 32, 37, 34, 33, 36]
-    priority_south_america = [30, 31, 29, 28, 2, 3, 36, 8, 7, 1, 6, 0, 4, 5, 21, 20, 37, 32, 33, 34, 13, 15, 35, 11, 10, 9, 12, 14, 24, 18, 22, 19, 23, 25, 17, 27, 26, 40, 39, 38, 41]
+    priority_south_america = [28, 31, 29, 30, 2, 3, 36, 8, 7, 1, 6, 0, 4, 5, 21, 20, 37, 32, 33, 34, 13, 15, 35, 11, 10, 9, 12, 14, 24, 18, 22, 19, 23, 25, 17, 27, 26, 40, 39, 38, 41]
     priority_europe = [10, 9, 15, 11, 12, 13, 14, 4, 26, 16, 22, 7, 6, 5, 34, 36, 0, 1, 3, 2, 8, 32, 33, 37, 35, 30, 29, 31, 28, 18, 21, 20, 23, 17, 19, 24, 25, 27, 38, 40, 39, 41]
 
     def is_continent_contested(continent):
@@ -592,19 +592,16 @@ def find_max_gap_border_territory(game: Game, border_territories: list[int], my_
 
     return target_territory
 
-
 def handle_fortify(game: Game, bot_state: BotState, query: QueryFortify) -> Union[MoveFortify, MoveFortifyPass]:
     """At the end of your turn, after you have finished attacking, you may move a number of troops between
     any two of your territories (they must be adjacent)."""
 
-    
-
     my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
     total_troops_per_player = {}
     for player in game.state.players.values():
-        total_troops_per_player[player.player_id] = sum([game.state.territories[x].troops for x in game.state.get_territories_owned_by(player.player_id)])
+        total_troops_per_player[player.player_id] = sum(game.state.territories[x].troops for x in game.state.get_territories_owned_by(player.player_id))
 
-    least_powerful_player = min(total_troops_per_player.items(), key=lambda x: x[1])[0]
+    most_powerful_player = max(total_troops_per_player.items(), key=lambda x: x[1])[0]
     
     # 获取所有边界领土和非边界领土
     border_territories = game.state.get_all_border_territories(my_territories)
@@ -614,25 +611,21 @@ def handle_fortify(game: Game, bot_state: BotState, query: QueryFortify) -> Unio
     if non_border_territories:
         strongest_non_border_territory = max(non_border_territories, key=lambda x: game.state.territories[x].troops)
         if game.state.territories[strongest_non_border_territory].troops > 1:
-            # 寻找最薄弱的边界领土
-            weakest_border_territory = min(border_territories, key=lambda x: game.state.territories[x].troops)
-            if weakest_border_territory:
-                # 寻找从最强非边界领土到最薄弱边界领土的最短路径
+            # 对所有边界领土尝试寻找最短路径
+            for weakest_border_territory in border_territories:
                 path = find_shortest_path_from_vertex_to_set(game, strongest_non_border_territory, {weakest_border_territory})
                 if len(path) > 1:
                     next_step = path[1]
-                    # print("fortify - try: non_border to border", strongest_non_border_territory, next_step, game.state.territories[strongest_non_border_territory].troops - 1)
                     return game.move_fortify(query, strongest_non_border_territory, next_step, game.state.territories[strongest_non_border_territory].troops - 1)
     
     # 寻找兵力最多的边界领土
-    most_troops_territory = max(border_territories, key=lambda x: game.state.territories[x].troops)
+    if border_territories:
+        most_troops_territory = max(border_territories, key=lambda x: game.state.territories[x].troops)
 
-    # 使用自定义函数寻找从兵力最多的边界领土到最弱敌方领土的最短路径
-    shortest_path = find_shortest_path_from_vertex_to_set(game, most_troops_territory, set(game.state.get_territories_owned_by(least_powerful_player)))
+        shortest_path = find_shortest_path_from_vertex_to_set(game, most_troops_territory, set(game.state.get_territories_owned_by(most_powerful_player)))
 
-    if len(shortest_path) > 1 and game.state.territories[most_troops_territory].troops > 1:
-        print("fortify", shortest_path[0], shortest_path[1])
-        return game.move_fortify(query, shortest_path[0], shortest_path[1], game.state.territories[most_troops_territory].troops // 2)
+        if len(shortest_path) > 1 and game.state.territories[most_troops_territory].troops > 1:
+            return game.move_fortify(query, shortest_path[0], shortest_path[1], game.state.territories[most_troops_territory].troops - 1)
     
     return game.move_fortify_pass(query)
 
