@@ -311,6 +311,59 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
 
     return game.move_distribute_troops(query, distributions)
 
+# 大洲优先级计算
+def calculate_continent_priority(game: Game) -> List[Tuple[str, float]]:
+    """计算每个大洲的优先级，并按优先级排序返回。"""
+    continent_bonus = {
+        "north_america": 5,
+        "europe": 5,
+        "asia": 7,
+        "south_america": 2,
+        "africa": 3,
+        "australia": 2
+    }
+    
+    continents = {
+        "north_america": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        "europe": [9, 10, 11, 12, 13, 14, 15],
+        "asia": [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],
+        "south_america": [28, 29, 30, 31],
+        "africa": [32, 33, 34, 35, 36, 37],
+        "australia": [40, 39, 38, 41]
+    }
+
+    control_difficulty = {
+        "north_america": 1,
+        "europe": 1.2,
+        "asia": 1.5,
+        "south_america": 0.8,
+        "africa": 1.1,
+        "australia": 0.5
+    }
+
+    my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
+    all_territories = set(range(42)) # ^_^
+    enemy_territories = all_territories - set(my_territories)
+    
+    continent_priorities = []
+
+    for continent, territories in continents.items():
+        total_territories = len(territories)
+        owned_territories = len(set(territories) & set(my_territories))
+        enemy_territories_count = len(set(territories) & enemy_territories)
+
+        priority_score = (
+            continent_bonus[continent] * 20 / control_difficulty[continent]
+            + owned_territories * 10
+            - enemy_territories_count * 20
+        )
+        continent_priorities.append((continent, priority_score))
+
+    # 按优先级排序大洲
+    continent_priorities.sort(key=lambda x: x[1], reverse=True)
+    
+    return continent_priorities
+
 # 进攻策略
 # + 是否进攻？ 如果损失不大，进攻拿卡
 # + 进攻优先级： 一波推 > 占领完整大陆 > 破坏完整大陆 > 其他
