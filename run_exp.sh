@@ -9,7 +9,10 @@ source .venv/bin/activate
 # run simulations
 python3 match_simulator.py \
     --submissions \
-    2:example_submissions/simple.py \
-    2:example_submissions/complex.py \
-    1:submissions/compete.py \
+    4:submissions/compete.py \
+    1:submissions/compete.v0.py \
     --engine
+
+
+    # 2:example_submissions/simple.py \
+    # 1:example_submissions/complex.py \
