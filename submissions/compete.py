@@ -104,7 +104,7 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
     europe = [10, 9, 15, 11, 12, 13, 14]
     asia = [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
     south_america = [28, 31, 29, 30]
-    africa = [32, 33, 34, 35, 36, 37]
+    africa = [32, 33, 36, 34, 35, 37]
     aus = [40, 39, 38, 41]
     
     # key locations
@@ -147,6 +147,7 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
     aus_keyloc = [40]
     aus_keyloc_rfd = [39, 41, 38]
 
+    priority_africa = [32, 33, 36, 34, 35, 37, 28, 29, 31, 15, 13, 9, 11, 22, 30, 18, 24, 40, 39, 41, 38, 2, 3, 16, 17, 19, 20, 21, 23, 25, 26, 27, 0, 1, 4, 5, 6, 7, 8, 10, 12, 14]
     priority_aus = [40, 39, 38, 41, 24, 18, 17, 22, 19, 23, 20, 16, 13, 15, 14, 25, 27, 21, 0, 2, 7, 1, 3, 4, 5, 26, 8, 6, 10, 9, 12, 11, 30, 31, 29, 28, 35, 32, 37, 34, 33, 36]
     priority_south_america = [28, 31, 29, 30, 2, 3, 36, 8, 7, 1, 6, 0, 4, 5, 21, 20, 37, 32, 33, 34, 13, 15, 35, 11, 10, 9, 12, 14, 24, 18, 22, 19, 23, 25, 17, 27, 26, 40, 39, 38, 41]
     priority_europe = [10, 9, 15, 11, 12, 13, 14, 4, 26, 16, 22, 7, 6, 5, 34, 36, 0, 1, 3, 2, 8, 32, 33, 37, 35, 30, 29, 31, 28, 18, 21, 20, 23, 17, 19, 24, 25, 27, 38, 40, 39, 41]
@@ -175,29 +176,39 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
         return count
 
     if claim_round == 1:
-        if not is_continent_contested(aus):
-            for territory in aus:
-                if territory in unclaimed_territories:
-                    claim_mode[0] = "australia"
-                    return game.move_claim_territory(query, territory)
-            
         if not is_continent_contested(south_america):
             for territory in south_america:
                 if territory in unclaimed_territories:
                     claim_mode[0] = "south_america"
                     return game.move_claim_territory(query, territory)
-
+                
+        if not is_continent_contested(aus):
+            for territory in aus:
+                if territory in unclaimed_territories:
+                    claim_mode[0] = "australia"
+                    return game.move_claim_territory(query, territory)
+                
         if not is_continent_contested(europe):
             for territory in europe:
                 if territory in unclaimed_territories:
                     claim_mode[0] = "europe"
-                    return game.move_claim_territory(query, territory)        
+                    return game.move_claim_territory(query, territory)      
+                
+        if not is_continent_contested(africa):
+            for territory in africa:
+                if territory in unclaimed_territories:
+                    claim_mode[0] = "africa"
+                    return game.move_claim_territory(query, territory)
         
         claim_mode[0] = "in_group"
         max_weight_territory = max(unclaimed_territories, key=lambda t: bfs_weight(t))
         
     else:
-        if claim_mode[0] == "australia":
+        if claim_mode[0] == "africa":
+            for territory in priority_africa:
+                if territory in unclaimed_territories:
+                    return game.move_claim_territory(query, territory)
+        elif claim_mode[0] == "australia":
             for territory in priority_aus:
                 if territory in unclaimed_territories:
                     return game.move_claim_territory(query, territory)
@@ -348,16 +359,8 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
 
     # # We will equally distribute across border territories in the early game,
     # # but start doomstacking in the late game.
-    if len(game.state.recording) < 4000:
-        troops_per_territory = total_troops // len(border_territories)
-        leftover_troops = total_troops % len(border_territories)
-        for territory in border_territories:
-            distributions[territory] += troops_per_territory
     
-        # The leftover troops will be put some territory (we don't care)
-        distributions[border_territories[0]] += leftover_troops
-    
-    else:
+    if len(game.state.recording) < 800:
         my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
         weakest_players = sorted(game.state.players.values(), key=lambda x: sum(
             [game.state.territories[y].troops for y in game.state.get_territories_owned_by(x.player_id)]
@@ -372,6 +375,15 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
                 selected_territory = list(set(game.state.map.get_adjacent_to(list(bordering_enemy_territories)[0])) & set(my_territories))[0]
                 distributions[selected_territory] += total_troops
                 break
+
+    else:
+        troops_per_territory = total_troops // len(border_territories)
+        leftover_troops = total_troops % len(border_territories)
+        for territory in border_territories:
+            distributions[territory] += troops_per_territory
+    
+        # The leftover troops will be put some territory (we don't care)
+        distributions[border_territories[0]] += leftover_troops
 
 
     return game.move_distribute_troops(query, distributions)
@@ -493,12 +505,32 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[
             for candidate_attacker in candidate_attackers:
                 threshhold = 2
                 bound = 1
-                if len(game.state.recording) < 450: pass
-                elif len(game.state.recording) < 1700: threshhold = 4
+                if len(game.state.recording) < 450:
+                    adj = game.state.map.get_adjacent_to(candidate_attacker)
+                    adjacent_threat = [x for x in adj if game.state.territories[x] not in my_territories]
+                    sum_threat = sum(game.state.territories[adj].troops for adj in adjacent_threat)
+                    if candidate_attacker < sum_threat: threshhold = 4
+                    else: pass
+                elif len(game.state.recording) < 1700:
+                    adj = game.state.map.get_adjacent_to(candidate_attacker)
+                    adjacent_threat = [x for x in adj if game.state.territories[x] not in my_territories]
+                    sum_threat = sum(game.state.territories[adj].troops for adj in adjacent_threat)
+                    if candidate_attacker < sum_threat: threshhold = 6
+                    else: threshhold = 4
                 elif len(game.state.recording) < 3000: threshhold = 6
-                else:
+                elif len(game.state.recording) < 3500:
                     threshhold = -2
                     bound = 2
+                else:
+                    threshhold = -100
+                    bound = 2
+
+                sum_attacker_advantage = sum(game.state.territories[x].troops for x in game.state.map.get_adjacent_to(candidate_target) if x in my_territories) - game.state.territories[candidate_target].troops
+                if set(game.state.map.get_adjacent_to(candidate_target)) in set(my_territories) and sum_attacker_advantage > 2:
+                    threshhold = -4
+                    bound = 2
+
+                
                 if game.state.territories[candidate_attacker].troops - game.state.territories[candidate_target].troops >= threshhold and game.state.territories[candidate_attacker].troops > bound:
                     return game.move_attack(query, candidate_attacker, candidate_target, min(3, game.state.territories[candidate_attacker].troops - 1))
                     # return game.move_attack(query, candidate_attacker, candidate_target, game.state.territories[candidate_target].troops)
@@ -577,20 +609,18 @@ def handle_defend(game: Game, bot_state: BotState, query: QueryDefend) -> MoveDe
 
 def find_max_gap_border_territory(game: Game, border_territories: list[int], my_territories: set[int]) -> int:
     """找到与周围部队差距最大的边界区域。"""
-    max_gap = -1
-    target_territory = None
+    gap_list = []
 
     for territory in border_territories:
         adjacent_territories = game.state.map.get_adjacent_to(territory)
         my_adjacent_troops = sum(game.state.territories[adj].troops for adj in adjacent_territories if adj in my_territories)
         enemy_adjacent_troops = sum(game.state.territories[adj].troops for adj in adjacent_territories if adj not in my_territories)
         gap = enemy_adjacent_troops - my_adjacent_troops
+        gap_list.append((gap, territory))
 
-        if gap > max_gap:
-            max_gap = gap
-            target_territory = territory
-
-    return target_territory
+    # 按差距从大到小排序
+    gap_list.sort(reverse=True, key=lambda x: x[0])
+    return [territory for gap, territory in gap_list]
 
 def handle_fortify(game: Game, bot_state: BotState, query: QueryFortify) -> Union[MoveFortify, MoveFortifyPass]:
     """At the end of your turn, after you have finished attacking, you may move a number of troops between
@@ -607,13 +637,15 @@ def handle_fortify(game: Game, bot_state: BotState, query: QueryFortify) -> Unio
     border_territories = game.state.get_all_border_territories(my_territories)
     non_border_territories = [t for t in my_territories if t not in border_territories]
 
+    weakest_border_territory = find_max_gap_border_territory(game, border_territories, set(my_territories))
+
     # 找到兵力最多的非边界领土
     if non_border_territories:
         strongest_non_border_territory = max(non_border_territories, key=lambda x: game.state.territories[x].troops)
         if game.state.territories[strongest_non_border_territory].troops > 1:
             # 对所有边界领土尝试寻找最短路径
-            for weakest_border_territory in border_territories:
-                path = find_shortest_path_from_vertex_to_set(game, strongest_non_border_territory, {weakest_border_territory})
+            for t in weakest_border_territory:
+                path = find_shortest_path_from_vertex_to_set(game, strongest_non_border_territory, {t})
                 if len(path) > 1:
                     next_step = path[1]
                     return game.move_fortify(query, strongest_non_border_territory, next_step, game.state.territories[strongest_non_border_territory].troops - 1)
