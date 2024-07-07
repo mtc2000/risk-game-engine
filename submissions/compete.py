@@ -482,6 +482,7 @@ def adjust_priority_based_on_forces(priorities: list[Tuple[str, float]], forces:
     
     return adjusted_priorities
 
+
 # 进攻策略
 # + 是否进攻？ 如果损失不大，进攻拿卡
 # + 进攻优先级： 一波推 > 占领完整大陆 > 破坏完整大陆 > 其他
@@ -515,9 +516,9 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[
                     adj = game.state.map.get_adjacent_to(candidate_attacker)
                     adjacent_threat = [x for x in adj if game.state.territories[x] not in my_territories]
                     sum_threat = sum(game.state.territories[adj].troops for adj in adjacent_threat)
-                    if candidate_attacker < sum_threat: threshhold = 6
+                    if candidate_attacker < sum_threat: threshhold = 5
                     else: threshhold = 4
-                elif len(game.state.recording) < 3000: threshhold = 6
+                elif len(game.state.recording) < 3000: threshhold = 4
                 elif len(game.state.recording) < 3500:
                     threshhold = -2
                     bound = 2
@@ -527,8 +528,8 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[
 
                 sum_attacker_advantage = sum(game.state.territories[x].troops for x in game.state.map.get_adjacent_to(candidate_target) if x in my_territories) - game.state.territories[candidate_target].troops
                 if set(game.state.map.get_adjacent_to(candidate_target)) in set(my_territories) and sum_attacker_advantage > 2:
-                    threshhold = -4
-                    bound = 2
+                    threshhold = -20
+                    bound = 1
 
                 
                 if game.state.territories[candidate_attacker].troops - game.state.territories[candidate_target].troops >= threshhold and game.state.territories[candidate_attacker].troops > bound:
