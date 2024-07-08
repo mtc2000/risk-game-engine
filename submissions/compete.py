@@ -105,7 +105,7 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
     asia = [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
     south_america = [28, 31, 29, 30]
     africa = [32, 33, 36, 34, 35, 37]
-    aus = [38, 40, 39, 41]
+    aus = [41, 40, 38, 39]
     
     # key locations
     # rfd = risk-free defend
@@ -301,7 +301,7 @@ def handle_place_initial_troop(game: Game, bot_state: BotState, query: QueryPlac
     border_territories = game.state.get_all_border_territories(my_territories)
 
     priority_africa = [32, 33, 36, 34, 35, 37, 28, 29, 31, 15, 13, 9, 11, 22, 30, 18, 24, 40, 39, 41, 38, 2, 3, 16, 17, 19, 20, 21, 23, 25, 26, 27, 0, 1, 4, 5, 6, 7, 8, 10, 12, 14]
-    priority_aus = [40, 39, 38, 41, 24, 18, 22, 34, 19, 17, 23, 20, 16, 13, 15, 14, 25, 27, 21, 0, 2, 7, 1, 3, 4, 5, 26, 8, 6, 10, 9, 12, 11, 30, 31, 29, 28, 35, 32, 37, 33, 36]
+    priority_aus = [40, 24, 39, 38, 41, 17, 18, 22, 34, 19, 23, 20, 16, 13, 15, 14, 25, 27, 21, 0, 2, 7, 1, 3, 4, 5, 26, 8, 6, 10, 9, 12, 11, 30, 31, 29, 28, 35, 32, 37, 33, 36]
     priority_south_america = [29, 30, 28, 31, 29, 36, 2, 3, 8, 37, 32, 33, 34, 35, 7, 1, 6, 13, 15, 11, 10, 9, 12, 14, 0, 4, 5, 21, 20, 24, 18, 22, 19, 23, 25, 17, 27, 26, 40, 39, 38, 41]
     priority_europe = [10, 14, 13, 15, 9, 11, 12, 4, 26, 16, 22, 7, 6, 5, 34, 36, 0, 1, 3, 2, 8, 32, 33, 37, 35, 30, 29, 31, 28, 18, 21, 20, 23, 17, 19, 24, 25, 27, 38, 40, 39, 41]
 
@@ -337,7 +337,9 @@ def handle_place_initial_troop(game: Game, bot_state: BotState, query: QueryPlac
     # 选择放置兵力的领土
     placement = None
     for territory in priority_list:
-        if territory in border_territories and game.state.territories[territory].troops <= threat_ratings[territory]:
+        adjustment = 1
+        if claim_mode == "australia": adjustment = 1.5
+        if territory in border_territories and game.state.territories[territory].troops <= threat_ratings[territory] + adjustment:
             print("threat rating", threat_ratings[territory], flush=True)
             placement = territory
             break
@@ -453,29 +455,42 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
         distributions[game.state.me.must_place_territory_bonus[0]] += 2
         total_troops -= 2
 
-    # 计算每个边界领土的威胁评级
-    threat_ratings = {territory: threat_count(game, territory, 3, 0.75) for territory in border_territories}
 
-    # 计算分配比例
-    total_threat = sum(threat_ratings.values())
-    if total_threat > 0:
-        distribution_ratios = {territory: threat / total_threat for territory, threat in threat_ratings.items()}
-    else:
-        distribution_ratios = {territory: 1 / len(border_territories) for territory in border_territories}
+    weakest_players = sorted(game.state.players.values(), key=lambda x: sum(
+        [game.state.territories[y].troops for y in game.state.get_territories_owned_by(x.player_id)]
+    ))
 
-    troops_to_allocate = total_troops
-    for territory, ratio in distribution_ratios.items():
-        troops_to_place = int(total_troops * ratio)
-        distributions[territory] += troops_to_place
-        troops_to_allocate -= troops_to_place
-
-    # 处理剩余的部队（由于舍入可能会有剩余）
-    if troops_to_allocate > 0:
-        for territory in sorted(threat_ratings, key=threat_ratings.get, reverse=True):
-            if troops_to_allocate <= 0:
+    if sum(t.troops for t in game.state.get_territories_owned_by(weakest_players[0])) + len(game.state.get_territories_owned_by(weakest_players[0])) < total_troops:
+        for player in weakest_players:
+            bordering_enemy_territories = set(game.state.get_all_adjacent_territories(my_territories)) & set(game.state.get_territories_owned_by(player.player_id))
+            if len(bordering_enemy_territories) > 0:
+                selected_territory = list(set(game.state.map.get_adjacent_to(list(bordering_enemy_territories)[0])) & set(my_territories))[0]
+                distributions[selected_territory] += total_troops
                 break
-            distributions[territory] += 1
-            troops_to_allocate -= 1
+    else:
+        # 计算每个边界领土的威胁评级
+        threat_ratings = {territory: threat_count(game, territory, 3, 0.75) for territory in border_territories}
+
+        # 计算分配比例
+        total_threat = sum(threat_ratings.values())
+        if total_threat > 0:
+            distribution_ratios = {territory: threat / total_threat for territory, threat in threat_ratings.items()}
+        else:
+            distribution_ratios = {territory: 1 / len(border_territories) for territory in border_territories}
+
+        troops_to_allocate = total_troops
+        for territory, ratio in distribution_ratios.items():
+            troops_to_place = int(total_troops * ratio)
+            distributions[territory] += troops_to_place
+            troops_to_allocate -= troops_to_place
+
+        # 处理剩余的部队（由于舍入可能会有剩余）
+        if troops_to_allocate > 0:
+            for territory in sorted(threat_ratings, key=threat_ratings.get, reverse=True):
+                if troops_to_allocate <= 0:
+                    break
+                distributions[territory] += 1
+                troops_to_allocate -= 1
 
     return game.move_distribute_troops(query, distributions)
 
@@ -492,7 +507,7 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[
     
     # We will attack someone.
     my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
-    threat_ratings = {territory: threat_count(game, territory, 4, 0.3) for territory in my_territories}
+    threat_ratings = {territory: threat_count(game, territory, 3, 0.2) for territory in my_territories}
     def attack_weakest(territories: list[int]) -> Optional[MoveAttack]:
         # We will attack the weakest territory from the list.
         territories = sorted(territories, key=lambda x: game.state.territories[x].troops)
@@ -500,20 +515,20 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[
             candidate_attackers = sorted(list(set(game.state.map.get_adjacent_to(candidate_target)) & set(my_territories)), key=lambda x: game.state.territories[x].troops, reverse=True)
             for candidate_attacker in candidate_attackers:
                 attacking_owned_troops = game.state.territories[candidate_attacker].troops
-                threshhold = 6
+                threshhold = 3
                 bound = 1
                 if len(game.state.recording) < 450:
                     # adj = game.state.map.get_adjacent_to(candidate_attacker)
                     # adjacent_threat = [x for x in adj if game.state.territories[x] not in my_territories]
                     # sum_threat = sum(game.state.territories[adj].troops for adj in adjacent_threat)
-                    if attacking_owned_troops < threat_ratings[candidate_attacker]: threshhold = threat_ratings[candidate_attacker] + 3
+                    if attacking_owned_troops < threat_ratings[candidate_attacker]: threshhold = threat_ratings[candidate_attacker] + 2
                     else: pass
                 elif len(game.state.recording) < 1700:
                     # adj = game.state.map.get_adjacent_to(candidate_attacker)
                     # adjacent_threat = [x for x in adj if game.state.territories[x] not in my_territories]
                     # sum_threat = sum(game.state.territories[adj].troops for adj in adjacent_threat)
-                    if attacking_owned_troops < threat_ratings[candidate_attacker]: threshhold = threat_ratings[candidate_attacker] + 4
-                    else: threshhold = 4
+                    if attacking_owned_troops < threat_ratings[candidate_attacker]: threshhold = threat_ratings[candidate_attacker] + 1
+                    else: threshhold = 3
                 elif len(game.state.recording) < 2200: threshhold = 4
                 elif len(game.state.recording) < 3000:
                     threshhold = -2
