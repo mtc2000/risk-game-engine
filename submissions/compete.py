@@ -185,12 +185,6 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
 
     if claim_round == 1:
 
-        if not is_continent_contested(south_america):
-            for territory in south_america:
-                if territory in unclaimed_territories:
-                    claim_mode[0] = "south_america"
-                    return game.move_claim_territory(query, territory)
-
         if not is_continent_contested(aus) and not is_continent_contested(asia):
             for territory in aus:
                 if territory in unclaimed_territories:
@@ -202,7 +196,13 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
                 if territory in unclaimed_territories:
                     claim_mode[0] = "europe"
                     return game.move_claim_territory(query, territory)
-                
+
+        if not is_continent_contested(south_america):
+            for territory in south_america:
+                if territory in unclaimed_territories:
+                    claim_mode[0] = "south_america"
+                    return game.move_claim_territory(query, territory)
+                                
         if not is_continent_contested(africa):
             for territory in africa:
                 if territory in unclaimed_territories:
@@ -364,8 +364,8 @@ def handle_place_initial_troop(game: Game, bot_state: BotState, query: QueryPlac
     placement = None
     for territory in priority_list:
         adjustment = 0.0
-        if claim_mode == "australia": adjustment = 3
-        if claim_mode == "south_america": adjustment = 3
+        if claim_mode == "australia": adjustment = 2
+        if claim_mode == "south_america": adjustment = 2
         if territory in border_territories and game.state.territories[territory].troops <= threat_ratings[territory]*0.75 + adjustment:
             print("threat rating", threat_ratings[territory], flush=True)
             placement = territory
@@ -496,7 +496,7 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
                 break
     else:
         # 计算每个边界领土的威胁评级
-        threat_ratings = {territory: threat_count(game, territory, 2, 0.2) for territory in my_territories}
+        threat_ratings = {territory: threat_count(game, territory, 2, 0.2) - game.state.territories[territory].troops for territory in my_territories}
 
         # 计算分配比例
         total_threat = sum(threat_ratings.values())
@@ -544,7 +544,7 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[
                 attacking_owned_troops = game.state.territories[candidate_attacker].troops
                 threshhold = 2
                 bound = 4
-                if len(game.state.recording) < 450:
+                if len(game.state.recording) < 800:
                     pass
                 elif len(game.state.recording) < 1400:
                     # adj = game.state.map.get_adjacent_to(candidate_attacker)
@@ -671,7 +671,7 @@ def handle_fortify(game: Game, bot_state: BotState, query: QueryFortify) -> Unio
     border_territories = game.state.get_all_border_territories(my_territories)
     non_border_territories = [t for t in my_territories if t not in border_territories]
 
-    threat_ratings = {territory: threat_count(game, territory, 1, 1) for territory in my_territories}
+    threat_ratings = {territory: threat_count(game, territory, 1, 1) - game.state.territories[territory].troops for territory in my_territories}
     weakest_border_territories = sorted(threat_ratings, key=threat_ratings.get)
 
     # 找到兵力最多的非边界领土
