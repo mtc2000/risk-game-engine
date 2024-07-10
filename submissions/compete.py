@@ -79,7 +79,7 @@ def main():
             3: [8, 2, 7, 6],
             4: [5, 6, 7, 10],
             5: [0, 1, 6, 4],
-            6: [4, 1, 8, 3, 7],
+            6: [4, 5, 1, 8, 7, 3],
             7: [3, 6, 4],
             8: [3, 2, 1, 6],
 
@@ -556,6 +556,13 @@ def handle_redeem_cards(game: Game, bot_state: BotState, query: QueryRedeemCards
 #     return game.move_distribute_troops(query, distributions)
 
 
+# attack_mode = "", "conquer_continent", "harrass_weakest", "try_eliminate", "try_escape"
+
+# need to check for difficulty on conquering continent
+
+
+
+
 def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistributeTroops, glb: dict) -> MoveDistributeTroops:
     # 1. 从最弱的我方区域开始检索：周围的威胁程度 - 2格 decay=?
 
@@ -621,7 +628,9 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
 # + 进攻优先级： 一波推 > 占领完整大陆 > 破坏完整大陆 > 其他
 # + 优先级计算加入 est. battle cost?
 
-def simulate_attack(attacker_dice: int, defender_dice: int) -> (int, int):
+
+# ?有必要吗？ 我不好说
+def simulate_attack(attacker_dice: int, defender_dice: int) -> Tuple:
     """Simulate a single attack round based on Risk dice rules."""
     attacker_rolls = sorted([np.random.randint(1, 7) for _ in range(attacker_dice)], reverse=True)
     defender_rolls = sorted([np.random.randint(1, 7) for _ in range(defender_dice)], reverse=True)
@@ -656,7 +665,6 @@ def estimate_attack_probability(attacker_troops: int, defender_troops: int, simu
 
     return attacker_wins / simulations
 
-#
 
 def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, glb: dict) -> Union[MoveAttack, MoveAttackPass]:
     """After the troop phase of your turn, you may attack any number of times until you decide to 
