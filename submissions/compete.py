@@ -129,7 +129,6 @@ def main():
             "africa": 0,
             "australia": 0
         }
-
     }
    
     # Respond to the engine's queries with your moves.
