@@ -453,10 +453,10 @@ def handle_place_initial_troop(game: Game, bot_state: BotState, query: QueryPlac
     border_territories = game.state.get_all_border_territories(my_territories)
 
     priority_africa = [32, 13, 22, 33, 34, 36, 34, 32, 35, 37, 28, 29, 31, 15, 13, 9, 11, 22, 30, 18, 24, 40, 39, 41, 38, 2, 3, 16, 17, 19, 20, 21, 23, 25, 26, 27, 0, 1, 4, 5, 6, 7, 8, 10, 12, 14]
-    priority_aus = [40, 24, 39, 38, 41, 17, 18, 22, 34, 19, 23, 20, 16, 13, 15, 14, 25, 27, 21, 0, 2, 7, 1, 3, 4, 5, 26, 8, 6, 10, 9, 12, 11, 30, 31, 29, 28, 35, 32, 37, 33, 36]
+    priority_aus = [24, 40, 24, 39, 38, 41, 17, 18, 22, 34, 19, 23, 20, 16, 13, 15, 14, 25, 27, 21, 0, 2, 7, 1, 3, 4, 5, 26, 8, 6, 10, 9, 12, 11, 30, 31, 29, 28, 35, 32, 37, 33, 36]
     priority_south_america = [29, 30, 31, 28, 36, 2, 3, 15, 8, 37, 32, 33, 34, 35, 7, 1, 6, 13, 11, 10, 9, 12, 14, 0, 4, 5, 21, 20, 24, 18, 22, 19, 23, 25, 17, 27, 26, 40, 39, 38, 41]
     priority_europe = [10, 14, 13, 15, 9, 11, 12, 4, 26, 16, 22, 7, 6, 5, 34, 36, 0, 1, 3, 2, 8, 32, 33, 37, 35, 30, 29, 31, 28, 18, 21, 20, 23, 17, 19, 24, 25, 27, 38, 40, 39, 41]
-    priority_north_america = [6, 1, 5, 0, 4, 8, 7, 3, 2, 30, 10, 9, 12, 31, 28, 21, 20, 29, 15, 11, 14, 27, 19, 23, 36, 34, 22, 16, 26, 25, 17, 18, 24, 40, 39, 41, 38]
+    priority_north_america = [2, 6, 1, 5, 0, 4, 8, 7, 3, 2, 30, 10, 9, 12, 31, 28, 21, 20, 29, 15, 11, 14, 27, 19, 23, 36, 34, 22, 16, 26, 25, 17, 18, 24, 40, 39, 41, 38]
     priority_asia = [16, 21, 22, 24, 18, 17, 26, 20, 23, 25, 19, 27, 0, 14, 13, 11, 12, 15,]
 
 
@@ -638,7 +638,7 @@ def mark_elimination_zone(game: Game, my_territories: list, border_territories: 
             if enemy_border_territories.intersection(adjacent_territories):
                 # Mark these territories in the elimination zone
                 tmp = find_connected_components(enemy_territories)
-                if len(tmp) > 2:
+                if len(tmp) > 1:
                     break
                 c = 0
                 for i in tmp:
@@ -677,7 +677,7 @@ def update_conquer_continent_difficulties(game: Game, glb: dict) -> None:
         if continent_key == "australia":
             adjustment = 0
         if continent_key == "north_america":
-            adjustment = 4
+            adjustment = 3
         if continent_key[:15] == "elimination_zone":
             adjustment = 0
         conquer_continent_difficulties[continent_key] = total_enemy_troops + adjustment
@@ -754,6 +754,7 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
 
     
     difficulties = glb["conquer_continent_difficulties"]
+    difficulties = dict(sorted(difficulties.items(), key=lambda x: x[1]))
     print(difficulties, flush=True)
 
     for continent, difficulty in difficulties.items():
@@ -878,10 +879,12 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, glb: dict
     # bordering_enemy_territories = game.state.get_all_adjacent_territories(my_territories)
     # threat_ratings = {territory: threat_count(game, territory, 3, 0.2) for territory in bordering_enemy_territories}
     
+    # harrass_weakest
     def attack_check(t, territories: list[int]) -> Optional[MoveAttack]:
         territories = sorted(territories, key=lambda x: game.state.territories[x].troops)
 
         conquer_continent_difficulties = glb["conquer_continent_difficulties"]
+        conquer_continent_difficulties = dict(sorted(conquer_continent_difficulties.items(), key=lambda x: x[1]))
 
         for target_continent, difficulty in conquer_continent_difficulties.items():
             target_range = glb["continents"][target_continent]
@@ -892,8 +895,9 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, glb: dict
                 if attacker_t not in my_territories:
                     continue
                 attacker_troops = game.state.territories[attacker_t].troops
-                for target in glb["attack_priority_list"][attacker_t]:
-                    if target not in target_range:
+                target_range = sorted(target_range, key=lambda x: game.state.territories[x].troops)
+                for target in target_range:
+                    if target not in game.state.map.get_adjacent_to(attacker_t):
                         continue
                     if target not in my_territories and game.state.territories[target].troops <= attacker_troops and attacker_troops >= 3:
                         return game.move_attack(query, attacker_t, target, min(3, game.state.territories[attacker_t].troops - 1))
@@ -1013,7 +1017,7 @@ def handle_troops_after_attack(game: Game, bot_state: BotState, query: QueryTroo
         troops_to_move = max(attacking_territory_troops - 1, attacking_troops)
         if we_own_all_adj:
             troops_to_move = min(3, attacking_territory_troops - 1)
-        elif threat_count(game, attacking_territory, 2, 0.2) >= 4.8:
+        elif threat_count(game, attacking_territory, 1, 0.2) >= 4:
             troops_to_move = max(attacking_territory_troops - 2, attacking_troops)
         return game.move_troops_after_attack(query, troops_to_move)
     else:
