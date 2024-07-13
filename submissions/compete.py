@@ -63,11 +63,15 @@ def main():
             "north_america": [0, 1, 2, 3, 4, 5, 6, 7, 8],
             "europe": [9, 10, 11, 12, 13, 14, 15],
             "asia": [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],
-            "north_asia": [26, 25, 27, 21, 19, 23, 20],
-            "south_asia": [24, 18, 17, 22, 16], 
+            # "asia_g2": [16, 17, 18, 19, 22, 23, 24, 25, 26, 27],
+            # "north_asia": [26, 25, 27, 21, 19, 23, 20],
+            # "south_hem": [40, 39, 41, 38, 24, 18, 22, 33, 35, 37, 34, 36, 29, 31, 28, 30],
             "south_america": [28, 29, 30, 31],
             "africa": [32, 33, 34, 35, 36, 37],
-            "australia": [38, 40, 39, 41]
+            # "af_ext": [32, 33, 34, 35, 36, 37, 29, 30, 28, 31],
+            "australia": [38, 40, 39, 41],
+            # "north_america_g3": [2, 3, 8, 1, 6, 7, 5, 0],
+            # "north_america_g4": [2, 3, 8, 1, 6, 7, 5, 4],
         },
         "claim_round": 0,
         "claim_mode": "australia",
@@ -97,7 +101,7 @@ def main():
             19: [21, 23, 27, 25],
             20: [21, 23],
             21: [20, 23, 19, 27, 0],
-            22: [18, 16, 33, 34, 14, 13],
+            22: [18, 16, 34, 33, 14, 13],
             23: [20, 21, 19, 25, 17],
             24: [17, 18, 40],
             25: [27, 19, 23, 26, 17],
@@ -117,7 +121,7 @@ def main():
             37: [35, 33, 32],
 
             38: [41, 39],
-            39: [38, 41, 40],
+            39: [41, 38, 40],
             40: [39, 41, 24],
             41: [38, 39, 40]
         },
@@ -136,7 +140,9 @@ def main():
             3: 0,
             4: 0
         },
-        "fork_flags": {}
+        "fork_flags": [],
+        "tmp_flag": "",
+        "fork_flags_whole_map": [],
     }
    
     # Respond to the engine's queries with your moves.
@@ -189,54 +195,15 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
     south_america = [30, 29, 31, 28]
     africa = [36, 33, 34, 32, 37, 35]
     aus = [40, 39, 41, 38]
-    south_asia = [24, 18, 17, 22]
-    
-    # key locations
-    # rfd = risk-free defend
-    # area value = (value + 2 * connected_conts + rfd) / keylocs
-    
-    # val: 5.67
-    north_america_value = 5
-    north_america_connected_conts = 3
-    north_america_keyloc = [0, 2, 4]
-    north_america_rfd = [5, 1, 6, 7, 8, 3]
-    
-    # val: 3.5
-    europe_value = 5
-    europe_connected_conts = 3
-    europe_keyloc = [10, 15, 13, 14]
-    europe_keyloc_rfd = [9, 11, 12]
-    
-    # val:　4.4
-    asia_value = 7
-    asia_connected_conts = 4
-    asia_keyloc = [26, 16, 22, 24, 21]
-    asia_keyloc_rfd = [25, 27, 18, 20, 23, 17, 18]
-    
-    # val: 4
-    south_america_value = 2
-    south_america_connected_conts = 2
-    south_america_keyloc = [30, 29]
-    south_america_keyloc_rfd = [31, 28]
-    
-    # val: 4
-    africa_value = 3
-    africa_connected_conts = 3
-    africa_keyloc = [36, 34, 33]
-    africa_keyloc_rfd = [32, 37, 35]
-    
-    # val: 7
-    australia_connected_conts = 1
-    australia_value = 2
-    aus_keyloc = [40]
-    aus_keyloc_rfd = [39, 41, 38]
+
+    # ---
 
     priority_asia = [16, 21, 22, 24, 18, 17, 26, 20, 23, 25, 19, 27, 0, 14, 13, 11, 12, 15,]
     priority_africa = [36, 33, 32, 37, 35, 34, 28, 29, 31, 15, 13, 9, 11, 22, 30, 18, 24, 40, 39, 41, 38, 2, 3, 16, 17, 19, 20, 21, 23, 25, 26, 27, 0, 1, 4, 5, 6, 7, 8, 10, 12, 14]
     priority_aus = [38, 40, 39, 41, 24, 18, 17, 22, 19, 23, 20, 16, 13, 15, 14, 25, 27, 21, 0, 2, 7, 1, 3, 4, 5, 26, 8, 6, 10, 9, 12, 11, 30, 31, 29, 28, 35, 32, 37, 34, 33, 36]
     priority_south_america = [30, 29, 31, 28, 2, 3, 36, 15, 8, 37, 32, 33, 34, 35, 7, 1, 6, 13, 11, 10, 9, 12, 14, 0, 4, 5, 21, 20, 24, 18, 22, 19, 23, 25, 17, 27, 26, 40, 39, 38, 41]
     priority_europe = [13, 34, 36, 33, 32, 14, 15, 9, 11, 12, 10, 4, 22, 35, 37, 29, 31, 7, 6, 5, 26, 16, 22, 7, 6, 5, 34, 36, 0, 1, 3, 2, 8, 32, 33, 37, 35, 30, 29, 31, 28, 18, 21, 20, 23, 17, 19, 24, 25, 27, 38, 40, 39, 41]
-    priority_north_america = [0, 2, 4, 6, 1, 5, 8, 7, 3, 30, 10, 9, 12, 31, 28, 21, 20, 29, 15, 11, 14, 27, 19, 23, 36, 34, 22, 16, 26, 25, 17, 18, 24, 40, 39, 41, 38]
+    priority_north_america = [6, 8, 3, 2, 1, 5, 7, 0, 4, 30, 10, 9, 12, 31, 28, 21, 20, 29, 15, 11, 14, 27, 19, 23, 36, 34, 22, 16, 26, 25, 17, 18, 24, 40, 39, 41, 38]
 
     def is_continent_contested(continent):
         for territory in continent:
@@ -263,12 +230,6 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
 
     if glb["claim_round"] == 1:
 
-        if not is_continent_contested(north_america):
-            for territory in north_america:
-                if territory in unclaimed_territories:
-                    glb["claim_mode"] = "north_america"
-                    return game.move_claim_territory(query, territory) 
-
         if not is_continent_contested(aus):
             for territory in aus:
                 if territory in unclaimed_territories:
@@ -279,6 +240,12 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
             for territory in south_america:
                 if territory in unclaimed_territories:
                     glb["claim_mode"] = "south_america"
+                    return game.move_claim_territory(query, territory)
+
+        if not is_continent_contested(north_america):
+            for territory in north_america:
+                if territory in unclaimed_territories:
+                    glb["claim_mode"] = "north_america"
                     return game.move_claim_territory(query, territory)
                 
         if not is_continent_contested(africa):
@@ -316,13 +283,15 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
             for territory in north_america:
                 if territory in unclaimed_territories:
                     glb["claim_mode"] = "north_america"
-                    return game.move_claim_territory(query, territory) 
+                    return game.move_claim_territory(query, territory)
 
         if not is_continent_contested(aus):
             for territory in aus:
                 if territory in unclaimed_territories:
                     glb["claim_mode"] = "australia"
                     return game.move_claim_territory(query, territory)
+        
+         
                 
         if not is_continent_contested(south_america):
             for territory in south_america:
@@ -350,16 +319,16 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
         
     else:
 
-        if glb["claim_mode"] == "africa":
-            for territory in priority_africa:
-                if territory in unclaimed_territories:
-                    return game.move_claim_territory(query, territory)
-        elif glb["claim_mode"] == "australia":
+        if glb["claim_mode"] == "australia":
             for territory in priority_aus:
                 if territory in unclaimed_territories:
                     return game.move_claim_territory(query, territory)
         elif glb["claim_mode"] == "south_america":
             for territory in priority_south_america:
+                if territory in unclaimed_territories:
+                    return game.move_claim_territory(query, territory)
+        elif glb["claim_mode"] == "africa":
+            for territory in priority_africa:
                 if territory in unclaimed_territories:
                     return game.move_claim_territory(query, territory)
         elif glb["claim_mode"] == "europe":
@@ -454,7 +423,7 @@ def handle_place_initial_troop(game: Game, bot_state: BotState, query: QueryPlac
 
     priority_africa = [32, 13, 22, 33, 34, 36, 34, 32, 35, 37, 28, 29, 31, 15, 13, 9, 11, 22, 30, 18, 24, 40, 39, 41, 38, 2, 3, 16, 17, 19, 20, 21, 23, 25, 26, 27, 0, 1, 4, 5, 6, 7, 8, 10, 12, 14]
     priority_aus = [24, 40, 24, 39, 38, 41, 17, 18, 22, 34, 19, 23, 20, 16, 13, 15, 14, 25, 27, 21, 0, 2, 7, 1, 3, 4, 5, 26, 8, 6, 10, 9, 12, 11, 30, 31, 29, 28, 35, 32, 37, 33, 36]
-    priority_south_america = [29, 30, 31, 28, 36, 2, 3, 15, 8, 37, 32, 33, 34, 35, 7, 1, 6, 13, 11, 10, 9, 12, 14, 0, 4, 5, 21, 20, 24, 18, 22, 19, 23, 25, 17, 27, 26, 40, 39, 38, 41]
+    priority_south_america = [2, 6, 1, 5, 0, 4, 8, 7, 3, 2, 29, 30, 31, 28, 36, 2, 3, 15, 8, 37, 32, 33, 34, 35, 7, 1, 6, 13, 11, 10, 9, 12, 14, 0, 4, 5, 21, 20, 24, 18, 22, 19, 23, 25, 17, 27, 26, 40, 39, 38, 41]
     priority_europe = [10, 14, 13, 15, 9, 11, 12, 4, 26, 16, 22, 7, 6, 5, 34, 36, 0, 1, 3, 2, 8, 32, 33, 37, 35, 30, 29, 31, 28, 18, 21, 20, 23, 17, 19, 24, 25, 27, 38, 40, 39, 41]
     priority_north_america = [2, 6, 1, 5, 0, 4, 8, 7, 3, 2, 30, 10, 9, 12, 31, 28, 21, 20, 29, 15, 11, 14, 27, 19, 23, 36, 34, 22, 16, 26, 25, 17, 18, 24, 40, 39, 41, 38]
     priority_asia = [16, 21, 22, 24, 18, 17, 26, 20, 23, 25, 19, 27, 0, 14, 13, 11, 12, 15,]
@@ -534,7 +503,7 @@ def handle_redeem_cards(game: Game, bot_state: BotState, query: QueryRedeemCards
 
     # Remember we can't redeem any more than the required number of card sets if 
     # we have just eliminated a player.
-    if game.state.card_sets_redeemed > 0 and query.cause == "turn_started":
+    if game.state.card_sets_redeemed >= 0 and query.cause == "turn_started":
         card_set = game.state.get_card_set(cards_remaining)
         while card_set != None:
             card_sets.append(card_set)
@@ -665,31 +634,34 @@ def update_conquer_continent_difficulties(game: Game, glb: dict) -> None:
     for continent_key, continent in continents.items():
         print(continent_key, continent, flush=True)
         total_enemy_troops = calculate_continent_troops(game, continent, my_territories)
-        adjustment = 0
-        if continent_key == "south_asia":
-            adjustment = 5
-        if continent_key == "south_america":
-            adjustment = -1
-        if continent_key == "north_asia":
-            adjustment = 5
-        if continent_key == "asia":
-            adjustment = 2
-        if continent_key == "australia":
-            adjustment = 0
-        if continent_key == "north_america":
-            adjustment = 3
+        adjustment = 1
+        # if continent_key == "south_asia":
+        #     adjustment = 0
+        # if continent_key == "south_america":
+        #     adjustment = 0
+        # if continent_key == "north_asia":
+        #     adjustment = 0
+        # if continent_key == "asia":
+        #     adjustment = 0
+        # if continent_key == "australia":
+        #     adjustment = 0
+        # if continent_key == "north_america":
+        #     adjustment = 0
         if continent_key[:15] == "elimination_zone":
-            adjustment = 0
-        conquer_continent_difficulties[continent_key] = total_enemy_troops + adjustment
+            adjustment = - 7 + len(continent)//1.5
+        conquer_continent_difficulties[continent_key] = total_enemy_troops * 1.0 + adjustment
 
     # Sort the dictionary by difficulty
-    sorted_difficulties = dict(sorted(conquer_continent_difficulties.items(), key=lambda item: item[1], reverse=True))
+    sorted_difficulties = dict(sorted(conquer_continent_difficulties.items(), key=lambda item: item[1]))
     glb["conquer_continent_difficulties"] = sorted_difficulties
 
 
 def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistributeTroops, glb: dict) -> MoveDistributeTroops:
 
     # reset dicts
+
+    glb["fork_flags"] = []
+    glb["fork_flags_whole_map"] = []
 
     glb["conquer_continent_difficulties"] = {
             "north_america": 0,
@@ -705,7 +677,7 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
 
     my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
     border_territories = game.state.get_all_border_territories(my_territories)
-    threat_ratings = {territory: threat_count(game, territory, 1, 1) for territory in border_territories}
+    threat_ratings = {territory: threat_count(game, territory, 3, 0.5) for territory in border_territories}
     # sorted_border_territories = sorted(threat_ratings, key=threat_ratings.get)
 
     total_troops = game.state.me.troops_remaining
@@ -724,41 +696,12 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
     update_elimination_target(game, my_territories, border_territories, glb)
     mark_elimination_zone(game, my_territories, border_territories, glb)
     
-    # 处理消灭目标
-    # additional_troops_needed = {}
-    # for component in glb["elimination_zone"]:
-    #     total_enemy_troops = sum(game.state.territories[t].troops for t in component)
-    #     adjacent_territories = set(game.state.get_all_adjacent_territories(component)) & set(border_territories)
-        
-    #     if adjacent_territories:
-    #         strongest_adjacent_territory = max(adjacent_territories, key=lambda t: game.state.territories[t].troops)
-    #         troops_needed = total_enemy_troops - game.state.territories[strongest_adjacent_territory].troops + 1
-    #         if troops_needed > 0:
-    #             additional_troops_needed[strongest_adjacent_territory] = troops_needed
-    # print(total_troops, additional_troops_needed, flush=True)
-    # if additional_troops_needed and sum(additional_troops_needed.values()) <= total_troops:
-    #     glb["attack_mode"] = "eliminate"
-    #     for territory, troops in additional_troops_needed.items():
-    #         distributions[territory] += troops
-    #     total_troops -= sum(additional_troops_needed.values())
-
-    #     while total_troops > 0:
-    #         for territory in additional_troops_needed:
-    #             if total_troops <= 0:
-    #                 break
-    #             distributions[territory] += 1
-    #             total_troops -= 1
-
-    #     return game.move_distribute_troops(query, distributions)
-    
-
     
     difficulties = glb["conquer_continent_difficulties"]
-    difficulties = dict(sorted(difficulties.items(), key=lambda x: x[1]))
+    # difficulties = dict(sorted(difficulties.items(), key=lambda x: x[1]))
     print(difficulties, flush=True)
 
     for continent, difficulty in difficulties.items():
-
         continent_member = glb["continents"][continent]
         #adjacent_territories = set(game.state.get_all_adjacent_territories(continent_member)+[t for t in glb["continents"][continent] if t in my_territories]) & set(border_territories)
         unconquered_t_in_target_continent = set(continent_member) - set(my_territories)
@@ -766,11 +709,26 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
 
         if adjacent_territories:
             strongest_adjacent_territory = max(adjacent_territories, key=lambda t: game.state.territories[t].troops)
-            if game.state.territories[strongest_adjacent_territory].troops + total_troops >= difficulty and difficulty != 0:
+            if game.state.territories[strongest_adjacent_territory].troops + total_troops >= difficulty * 0.95 and difficulty != 0:
                 distributions[strongest_adjacent_territory] += total_troops
-                print(f"try conquer continent: {continent}, difficulty: {difficulty}, round: {len(game.state.recording)}",  flush=True)
+                # print(f"try conquer continent: {continent}, difficulty: {difficulty}, round: {len(game.state.recording)}",  flush=True)
                 glb["attack_mode"] = "conquer_continent"
                 return game.move_distribute_troops(query, distributions)
+    
+    # for continent, difficulty in difficulties.items():
+
+    #     continent_member = glb["continents"][continent]
+    #     #adjacent_territories = set(game.state.get_all_adjacent_territories(continent_member)+[t for t in glb["continents"][continent] if t in my_territories]) & set(border_territories)
+    #     unconquered_t_in_target_continent = set(continent_member) - set(my_territories)
+    #     adjacent_territories = set(game.state.get_all_adjacent_territories(unconquered_t_in_target_continent)) & set(border_territories)
+
+    #     if adjacent_territories:
+    #         strongest_adjacent_territory = max(adjacent_territories, key=lambda t: game.state.territories[t].troops)
+    #         if game.state.territories[strongest_adjacent_territory].troops + total_troops >= floor(difficulty * 0.6) and difficulty != 0:
+    #             distributions[strongest_adjacent_territory] += total_troops
+    #             # print(f"try conquer continent: {continent}, difficulty: {difficulty}, round: {len(game.state.recording)}",  flush=True)
+    #             glb["attack_mode"] = "harrass_weakest"
+    #             return game.move_distribute_troops(query, distributions)
 
     
     glb["attack_mode"] = "harrass_weakest"
@@ -884,22 +842,23 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, glb: dict
         territories = sorted(territories, key=lambda x: game.state.territories[x].troops)
 
         conquer_continent_difficulties = glb["conquer_continent_difficulties"]
-        conquer_continent_difficulties = dict(sorted(conquer_continent_difficulties.items(), key=lambda x: x[1]))
 
-        for target_continent, difficulty in conquer_continent_difficulties.items():
-            target_range = glb["continents"][target_continent]
-            unconquered_t_in_target_continent = set(target_range) - set(my_territories)
-            attacker_list = list(set(game.state.get_all_adjacent_territories(unconquered_t_in_target_continent)) & set(border_territories))
-            attacker_list = sorted(attacker_list, key=lambda x: game.state.territories[x].troops, reverse=True)
-            for attacker_t in attacker_list:
-                if attacker_t not in my_territories:
+        attacker_list = list(set(border_territories))
+        attacker_list = sorted(attacker_list, key=lambda x: game.state.territories[x].troops, reverse=True)
+        for attacker_t in attacker_list:
+            if attacker_t not in my_territories:
+                continue
+            for target_continent, d in conquer_continent_difficulties.items():
+                if target_continent[:15] == "elimination_zone":
                     continue
+                glb["tmp_flag"] = target_continent
+                target_range = glb["continents"][target_continent]
                 attacker_troops = game.state.territories[attacker_t].troops
                 target_range = sorted(target_range, key=lambda x: game.state.territories[x].troops)
                 for target in target_range:
                     if target not in game.state.map.get_adjacent_to(attacker_t):
                         continue
-                    if target not in my_territories and game.state.territories[target].troops <= attacker_troops and attacker_troops >= 3:
+                    if target not in my_territories and threat_count(game, target, 1, 0.5) <= attacker_troops and attacker_troops >= 3:
                         return game.move_attack(query, attacker_t, target, min(3, game.state.territories[attacker_t].troops - 1))
 
         # for candidate_target in glb["attack_priority_list"][t]:
@@ -922,11 +881,12 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, glb: dict
 
         for target_continent, difficulty in conquer_continent_difficulties.items():
             target_range = glb["continents"][target_continent]
-            print("target_continent: ", target_continent, flush=True)
+            # print("target_continent: ", target_continent, flush=True)
+            glb["tmp_flag"] = target_continent
             unconquered_t_in_target_continent = set(target_range) - set(my_territories)
             attacker_list = list(set(game.state.get_all_adjacent_territories(unconquered_t_in_target_continent)) & set(border_territories))
             #attacker_list = game.state.get_all_adjacent_territories(glb["continents"][target_continent]) + [t for t in glb["continents"][target_continent] if t in my_territories]
-            print(attacker_list, flush=True)
+            # print(attacker_list, flush=True)
             attacker_list = sorted(attacker_list, key=lambda x: game.state.territories[x].troops, reverse=True)
             
             for attacker_t in attacker_list:
@@ -942,7 +902,9 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, glb: dict
                     # print (attacker_troops >= 3)
                     if target not in my_territories and game.state.territories[target].troops <= attacker_troops and attacker_troops >= 3:
                         return game.move_attack(query, attacker_t, target, min(3, game.state.territories[attacker_t].troops - 1))
-                    
+        
+        glb["attack_mode"] = "end_conquer_continent"
+        
     else:
         ts = sorted(border_territories, key=lambda x: game.state.territories[x].troops, reverse=True)
         for t in ts:
@@ -1000,7 +962,8 @@ def handle_troops_after_attack(game: Game, bot_state: BotState, query: QueryTroo
     
     
     if glb["attack_mode"] == "harrass_weakest":
-        glb["attack_mode"] = "conquer_continent"
+        # glb["attack_mode"] = "conquer_continent"
+        glb["attack_mode"] = ""
         return game.move_troops_after_attack(query, min(attacking_territory_troops - 1, 3))
     
     # TODO: 检查是否所有相邻的区域都是自己的，如果是的话我们尝试只留1个兵力，否则的话我们根据周围的敌人数量来决定留下多少兵力？
@@ -1009,12 +972,86 @@ def handle_troops_after_attack(game: Game, bot_state: BotState, query: QueryTroo
     enemy_territories = adjacent_territories.difference(my_territories)
     enemy_powers = sum(game.state.territories[enemy_territory].troops for enemy_territory in enemy_territories)
 
-    if glb["attack_mode"] == "conquer_continent" or glb["attack_mode"] == "eliminate":
-        update_elimination_target(game, my_territories, border_territories, glb)
-        mark_elimination_zone(game, my_territories, border_territories, glb)
-        update_conquer_continent_difficulties(game, glb)
+    if glb["attack_mode"] == "conquer_continent" or glb["attack_mode"] == "end_conquer_continent":
+
+        if glb["attack_mode"] == "end_conquer_continent":
+            glb["attack_mode"] = "harrass_weakest"
+
+        def find_connected_components(territories: set, fixed_point: int) -> list:
+            """Find connected components in the given territories adjacent to a fixed point and not owned by the player."""
+            visited = set()
+            components = []
+
+            def dfs(territory, component):
+                stack = [territory]
+                while stack:
+                    current = stack.pop()
+                    if current not in visited and current not in my_territories:
+                        visited.add(current)
+                        component.append(current)
+                        adjacent = set(game.state.map.get_adjacent_to(current))
+                        stack.extend(adjacent.intersection(territories))
+
+            initial_adjacent = set(game.state.map.get_adjacent_to(fixed_point)).intersection(territories).difference(my_territories)
+
+            for territory in initial_adjacent:
+                if territory not in visited:
+                    component = []
+                    dfs(territory, component)
+                    components.append(component)
+
+            return components
+
+        # 当我们的一次攻击后，被攻占的区域出现了两个被分开的区域，
+        # 他们同属于我们的攻击目标区块（大洲），但是我们却没有办法在一笔画攻击中占领两者了，
+        # 所以我们需要一个额外的flag来辅助检测并进行分兵，在这里管理这个flag，
+        # 具体方法为：如果我的攻击在我们的目标区块中分出了两个不相连的component（我们需要检测），我们在glb["fork_flags"]中标记这个被攻击的区块，
+        # 当我们下一次从这个被标记的区域攻击别的区域时，我们就可以知道我们需要分兵，由于我们的下一次攻击会决定哪一条路会被抛弃，
+        # 我们针对这一条路的在这个continent内的所有相邻的territories进行一次总和计算，然后分配出一个合理的数量
+
+        print("tmp_flag:", glb["tmp_flag"], flush=True)
+
+        components = find_connected_components(set(glb["continents"][glb["tmp_flag"]]), conquered_territory)
+        if len(components) > 1:
+            glb["fork_flags"].append(conquered_territory)
+
+        cpnts_2 = find_connected_components(set(range(42)), conquered_territory)
+        if len(components) > 1:
+            glb["fork_flags_whole_map"].append(conquered_territory)
 
         troops_to_move = max(attacking_territory_troops - 1, attacking_troops)
+
+        if attacking_territory in glb["fork_flags_whole_map"]:
+            glb["fork_flags_whole_map"].remove(attacking_territory)
+
+            cts = find_connected_components(set(range(42)), attacking_territory)
+            summing_stay = 1
+            for component in cts:
+                summing_stay += sum(game.state.territories[t].troops for t in component)
+            summing_leave = 0
+            for component in cpnts_2:
+                summing_leave += sum(game.state.territories[t].troops for t in component)
+
+            if summing_stay + summing_leave < attacking_territory_troops:
+                ratio = summing_leave / (summing_stay + summing_leave)
+                troops_to_move = max(floor(attacking_territory_troops * ratio) - 1, attacking_troops)
+                return game.move_troops_after_attack(query, troops_to_move)
+
+        if attacking_territory in glb["fork_flags"]:
+            glb["fork_flags"].remove(attacking_territory)
+
+            cts = find_connected_components(set(glb["continents"][glb["tmp_flag"]]), attacking_territory)
+            summing_stay = 1
+            for component in cts:
+                summing_stay += sum(game.state.territories[t].troops for t in component)
+            summing_leave = 0
+            for component in components:
+                summing_leave += sum(game.state.territories[t].troops for t in component)
+
+            ratio = summing_leave / (summing_stay + summing_leave)
+            troops_to_move = max(floor(attacking_territory_troops * ratio) - 1, attacking_troops)
+            return game.move_troops_after_attack(query, troops_to_move)
+
         if we_own_all_adj:
             troops_to_move = min(3, attacking_territory_troops - 1)
         elif threat_count(game, attacking_territory, 1, 0.2) >= 4:
@@ -1024,6 +1061,8 @@ def handle_troops_after_attack(game: Game, bot_state: BotState, query: QueryTroo
         troops_to_move = max(attacking_territory_troops - max(1, floor(enemy_powers*0.8)), attacking_troops)
     
     return game.move_troops_after_attack(query, troops_to_move)
+
+
 
 # 可以忽略
 def handle_defend(game: Game, bot_state: BotState, query: QueryDefend) -> MoveDefend:
