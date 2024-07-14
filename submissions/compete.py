@@ -668,7 +668,7 @@ def update_conquer_continent_difficulties(game: Game, glb: dict) -> None:
         #     adjustment = 0
         # if continent_key == "north_america":
         #     adjustment = 0
-        if continent_key[:15] == "elimination_zone":
+        if continent_key[:16] == "elimination_zone":
             adjustment = - 7 + len(continent)//1.5
         conquer_continent_difficulties[continent_key] = total_enemy_troops * 1.0 + adjustment
 
@@ -728,11 +728,15 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
         unconquered_t_in_target_continent = set(continent_member) - set(my_territories)
         adjacent_territories = set(game.state.get_all_adjacent_territories(unconquered_t_in_target_continent)) & set(border_territories)
 
-        if adjacent_territories:
+        if adjacent_territories and unconquered_t_in_target_continent:
             strongest_adjacent_territory = max(adjacent_territories, key=lambda t: game.state.territories[t].troops)
+
+            if game.state.territories[strongest_adjacent_territory].troops >= difficulty and difficulty != 0:
+                continue
+
             if game.state.territories[strongest_adjacent_territory].troops + total_troops >= difficulty * 0.95 and difficulty != 0:
                 distributions[strongest_adjacent_territory] += total_troops
-                # print(f"try conquer continent: {continent}, difficulty: {difficulty}, round: {len(game.state.recording)}",  flush=True)
+                print(f"try conquer continent: {continent}, difficulty: {difficulty}, round: {len(game.state.recording)}",  flush=True)
                 glb["attack_mode"] = "conquer_continent"
                 return game.move_distribute_troops(query, distributions)
     
@@ -911,8 +915,8 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, glb: dict
             attacker_list = sorted(attacker_list, key=lambda x: game.state.territories[x].troops, reverse=True)
             
             for attacker_t in attacker_list:
-                if attacker_t not in my_territories:
-                    continue
+                # if attacker_t not in my_territories:
+                #     continue
                 attacker_troops = game.state.territories[attacker_t].troops
                 for target in glb["attack_priority_list"][attacker_t]:
                     if target not in target_range or attacker_troops <= difficulty:
