@@ -228,6 +228,7 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
                 for neighbor in game.state.map.get_adjacent_to(current):
                     if neighbor not in visited:
                         queue.append(neighbor)
+        print('bfs {} {}'.format(territory, count), flush=True)
         return count
 
     if glb["claim_round"] == 1:
@@ -346,8 +347,10 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
             adjacent_territories = game.state.get_all_adjacent_territories(my_territories)
             available = list(set(unclaimed_territories) & set(adjacent_territories))
             if len(available) != 0:
+                print('elseA',flush=True)
                 max_weight_territory = max(available, key=lambda t: bfs_weight(t))
             else:
+                print('elseB',flush=True)
                 max_weight_territory = max(unclaimed_territories, key=lambda t: bfs_weight(t))
             return game.move_claim_territory(query, max_weight_territory)
     
