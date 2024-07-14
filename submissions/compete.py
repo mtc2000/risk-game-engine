@@ -388,6 +388,8 @@ def threat_adjacent_max_count(game: Game, territory: int):
     my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
     adjacent_territories = game.state.get_all_adjacent_territories([territory])
     adjacent_enemies_territories = set(adjacent_territories) - set(my_territories)
+    if len(adjacent_enemies_territories) == 0:
+        return 0
     sorted_adjacent_enemies_territories = sorted(adjacent_enemies_territories, key=lambda t: game.state.territories[t].troops, reverse=True)
     max_adjacent_enemies_territories = sorted_adjacent_enemies_territories[0]
     return game.state.territories[max_adjacent_enemies_territories].troops
@@ -479,8 +481,12 @@ def handle_place_initial_troop(game: Game, bot_state: BotState, query: QueryPlac
     for territory in priority_list:
         # adjustment = 0.8
         adjustment = 0
-        if (glb["claim_mode"] != "australia" or territory not in [24, 38, 39, 40, 41]) and game.state.territories[territory].troops >= 10:
-            continue
+        # TODO
+        if glb["claim_mode"] == "australia" or territory in [24, 38, 39, 40, 41]:
+            pass
+        else:
+            if game.state.territories[territory].troops >= 10:
+                continue
         if territory in border_territories and game.state.territories[territory].troops <= threat_ratings[territory] + adjustment:
             print("threat rating", threat_ratings[territory], flush=True)
             placement = territory
