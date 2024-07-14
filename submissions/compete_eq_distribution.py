@@ -703,25 +703,13 @@ def update_conquer_continent_difficulties(game: Game, glb: dict) -> None:
         print(continent_key, continent, flush=True)
         total_enemy_troops = calculate_continent_troops(game, continent, my_territories)
         adjustment = -1
-        # if continent_key == "south_asia":
-        #     adjustment = 0
-        # if continent_key == "south_america":
-        #     adjustment = 0
-        # if continent_key == "north_asia":
-        #     adjustment = 0
-        # if continent_key == "asia":
-        #     adjustment = 0
-        # if continent_key == "australia":
-        #     adjustment = 0
-        # if continent_key == "north_america":
-        #     adjustment = 0
         # TODO
         if continent_key.startswith("elimination_zone"):
-            adjustment = - 7 + len(continent) // 2
+            adjustment = - 5 + len(continent) // 2
         conquer_continent_difficulties[continent_key] = floor(total_enemy_troops + adjustment)
 
     # Sort the dictionary by difficulty
-    sorted_difficulties = dict(sorted(conquer_continent_difficulties.items(), key=lambda item: item[1]))
+    sorted_difficulties = dict(sorted(conquer_continent_difficulties.items(), key=lambda item: (not item[0].startswith("elimination_zone"), item[1])))
     glb["conquer_continent_difficulties"] = sorted_difficulties
 
 
@@ -776,9 +764,6 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
 
         if adjacent_territories:
             strongest_adjacent_territory = max(adjacent_territories, key=lambda t: game.state.territories[t].troops)
-            if game.state.territories[strongest_adjacent_territory].troops > difficulty + 3 and difficulty != 0:
-                glb["attack_mode"] = "conquer_continent"
-                continue
             if game.state.territories[strongest_adjacent_territory].troops + total_troops >= floor(difficulty * 0.83) and difficulty != 0:
                 distributions[strongest_adjacent_territory] += total_troops
                 # print(f"try conquer continent: {continent}, difficulty: {difficulty}, round: {len(game.state.recording)}",  flush=True)
