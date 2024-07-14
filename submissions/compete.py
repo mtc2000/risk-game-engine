@@ -383,6 +383,16 @@ def conquer_continent_difficulty(game: Game, glb) -> None:
     target = min(difficulties, key=difficulties.get)
     glb["claim_mode"] = target
 
+
+def threat_adjacent_max_count(game: Game, territory: int):
+    my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
+    adjacent_territories = game.state.get_all_adjacent_territories([territory])
+    adjacent_enemies_territories = set(adjacent_territories) - set(my_territories)
+    sorted_adjacent_enemies_territories = sorted(adjacent_enemies_territories, key=lambda t: game.state.territories[t].troops, reverse=True)
+    max_adjacent_enemies_territories = sorted_adjacent_enemies_territories[0]
+    return game.state.territories[max_adjacent_enemies_territories].troops
+
+
 def threat_count(game: Game, territory: int, n: int, decay_factor: float) -> float:
     #遍历n步内的所有敌方兵力，威胁评级相当于造访的区域的兵力总和，但是区域的威胁会随着距离的增加而减少，每一层*decay_factor
     queue = deque([(territory, 0)])  # (territory, depth)
@@ -445,7 +455,8 @@ def handle_place_initial_troop(game: Game, bot_state: BotState, query: QueryPlac
             territory_to_continent[territory] = continent
 
     # 计算每个我方领土的威胁评级
-    threat_ratings = {territory: threat_count(game, territory, 2, 0.25) for territory in border_territories}
+    # threat_ratings = {territory: threat_count(game, territory, 2, 0.25) for territory in border_territories}
+    threat_ratings = {territory: threat_adjacent_max_count(game, territory) for territory in border_territories}
 
     # 选择放置兵力的领土
     # 通过周围的威胁来均匀放置兵力，运用priority list的顺序对他们进行一次检测，如果当前territory的兵力<=周围的威胁总和，就放置兵力
@@ -466,7 +477,10 @@ def handle_place_initial_troop(game: Game, bot_state: BotState, query: QueryPlac
     # 选择放置兵力的领土
     placement = None
     for territory in priority_list:
-        adjustment = 0.8
+        # adjustment = 0.8
+        adjustment = 0
+        if (glb["claim_mode"] != "australia" or territory not in [24, 38, 39, 40, 41]) and game.state.territories[territory].troops >= 10:
+            continue
         if territory in border_territories and game.state.territories[territory].troops <= threat_ratings[territory] + adjustment:
             print("threat rating", threat_ratings[territory], flush=True)
             placement = territory
