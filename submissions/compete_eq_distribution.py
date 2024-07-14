@@ -203,7 +203,7 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
     priority_africa = [36, 33, 32, 37, 35, 34, 28, 29, 31, 15, 13, 9, 11, 22, 30, 18, 24, 40, 39, 41, 38, 2, 3, 16, 17, 19, 20, 21, 23, 25, 26, 27, 0, 1, 4, 5, 6, 7, 8, 10, 12, 14]
     priority_aus = [38, 40, 39, 41, 24, 18, 17, 22, 19, 23, 20, 16, 13, 15, 14, 25, 27, 21, 0, 2, 7, 1, 3, 4, 5, 26, 8, 6, 10, 9, 12, 11, 30, 31, 29, 28, 35, 32, 37, 34, 33, 36]
     priority_south_america = [30, 29, 31, 28, 2, 3, 36, 15, 8, 37, 32, 33, 34, 35, 7, 1, 6, 13, 11, 10, 9, 12, 14, 0, 4, 5, 21, 20, 24, 18, 22, 19, 23, 25, 17, 27, 26, 40, 39, 38, 41]
-    priority_europe = [13, 34, 36, 33, 32, 14, 15, 9, 11, 12, 10, 4, 22, 35, 37, 29, 31, 7, 6, 5, 26, 16, 22, 7, 6, 5, 34, 36, 0, 1, 3, 2, 8, 32, 33, 37, 35, 30, 29, 31, 28, 18, 21, 20, 23, 17, 19, 24, 25, 27, 38, 40, 39, 41]
+    priority_europe = [11, 2, 35, 38, 12, 10, 28, 9, 15, 13, 14, 4, 7, 26, 34, 36, 33, 32, 9, 11, 12, 10, 4, 22, 35, 37, 29, 31, 7, 6, 5, 26, 16, 22, 7, 6, 5, 34, 36, 0, 1, 3, 2, 8, 32, 33, 37, 35, 30, 29, 31, 28, 18, 21, 20, 23, 17, 19, 24, 25, 27, 38, 40, 39, 41]
     priority_north_america = [6, 8, 3, 2, 1, 5, 7, 0, 4, 30, 10, 9, 12, 31, 28, 21, 20, 29, 15, 11, 14, 27, 19, 23, 36, 34, 22, 16, 26, 25, 17, 18, 24, 40, 39, 41, 38]
 
     def is_continent_contested(continent):
@@ -234,6 +234,18 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
 
     if glb["claim_round"] == 1:
 
+        if not is_continent_contested(europe):
+            for territory in priority_europe:
+                if territory in unclaimed_territories:
+                    glb["claim_mode"] = "europe"
+                    return game.move_claim_territory(query, territory)
+
+        if not is_continent_contested(north_america):
+            for territory in priority_north_america:
+                if territory in unclaimed_territories:
+                    glb["claim_mode"] = "north_america"
+                    return game.move_claim_territory(query, territory)
+                                
         if not is_continent_contested(aus):
             for territory in priority_aus:
                 if territory in unclaimed_territories:
@@ -245,23 +257,11 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
                 if territory in unclaimed_territories:
                     glb["claim_mode"] = "south_america"
                     return game.move_claim_territory(query, territory)
-
-        if not is_continent_contested(north_america):
-            for territory in priority_north_america:
-                if territory in unclaimed_territories:
-                    glb["claim_mode"] = "north_america"
-                    return game.move_claim_territory(query, territory)
                 
         if not is_continent_contested(africa):
             for territory in priority_africa:
                 if territory in unclaimed_territories:
                     glb["claim_mode"] = "africa"
-                    return game.move_claim_territory(query, territory)
-        
-        if not is_continent_contested(europe):
-            for territory in priority_europe:
-                if territory in unclaimed_territories:
-                    glb["claim_mode"] = "europe"
                     return game.move_claim_territory(query, territory)
         
         # TODO: below cannot be reached? because there are only five players
@@ -280,6 +280,12 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
         max_weight_territory = max(unclaimed_territories, key=lambda t: bfs_weight(t))
 
     elif glb["claim_round"] == 2:
+
+        if not is_continent_contested(europe):
+            for territory in priority_europe:
+                if territory in unclaimed_territories:
+                    glb["claim_mode"] = "europe"
+                    return game.move_claim_territory(query, territory)
 
         if not is_continent_contested(north_america):
             for territory in priority_north_america:
@@ -305,12 +311,6 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
                     glb["claim_mode"] = "africa"
                     return game.move_claim_territory(query, territory)
                                             
-        if not is_continent_contested(europe):
-            for territory in priority_europe:
-                if territory in unclaimed_territories:
-                    glb["claim_mode"] = "europe"
-                    return game.move_claim_territory(query, territory)
-                
         if not is_continent_contested(asia):
             for territory in priority_asia:
                 if territory in unclaimed_territories:
@@ -429,74 +429,115 @@ def handle_place_initial_troop(game: Game, bot_state: BotState, query: QueryPlac
     of your territories each turn until each player runs out of troops."""
 
     # 计算大洲优先级
-    conquer_continent_difficulty(game, glb)
+    # conquer_continent_difficulty(game, glb)
 
     # 获取所有边界领土
     my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
     border_territories = game.state.get_all_border_territories(my_territories)
 
-    priority_africa = [32, 13, 22, 33, 34, 36, 34, 32, 35, 37, 28, 29, 31, 15, 13, 9, 11, 22, 30, 18, 24, 40, 39, 41, 38, 2, 3, 16, 17, 19, 20, 21, 23, 25, 26, 27, 0, 1, 4, 5, 6, 7, 8, 10, 12, 14]
-    priority_aus = [24, 40, 24, 39, 38, 41, 17, 18, 22, 34, 19, 23, 20, 16, 13, 15, 14, 25, 27, 21, 0, 2, 7, 1, 3, 4, 5, 26, 8, 6, 10, 9, 12, 11, 30, 31, 29, 28, 35, 32, 37, 33, 36]
-    priority_south_america = [2, 6, 1, 5, 0, 4, 8, 7, 3, 2, 29, 30, 31, 28, 36, 2, 3, 15, 8, 37, 32, 33, 34, 35, 7, 1, 6, 13, 11, 10, 9, 12, 14, 0, 4, 5, 21, 20, 24, 18, 22, 19, 23, 25, 17, 27, 26, 40, 39, 38, 41]
-    priority_europe = [10, 14, 13, 15, 9, 11, 12, 4, 26, 16, 22, 7, 6, 5, 34, 36, 0, 1, 3, 2, 8, 32, 33, 37, 35, 30, 29, 31, 28, 18, 21, 20, 23, 17, 19, 24, 25, 27, 38, 40, 39, 41]
-    priority_north_america = [2, 6, 1, 5, 0, 4, 8, 7, 3, 2, 30, 10, 9, 12, 31, 28, 21, 20, 29, 15, 11, 14, 27, 19, 23, 36, 34, 22, 16, 26, 25, 17, 18, 24, 40, 39, 41, 38]
-    priority_asia = [16, 21, 22, 24, 18, 17, 26, 20, 23, 25, 19, 27, 0, 14, 13, 11, 12, 15,]
+    # priority_africa = [32, 13, 22, 33, 34, 36, 34, 32, 35, 37, 28, 29, 31, 15, 13, 9, 11, 22, 30, 18, 24, 40, 39, 41, 38, 2, 3, 16, 17, 19, 20, 21, 23, 25, 26, 27, 0, 1, 4, 5, 6, 7, 8, 10, 12, 14]
+    # priority_aus = [24, 40, 24, 39, 38, 41, 17, 18, 22, 34, 19, 23, 20, 16, 13, 15, 14, 25, 27, 21, 0, 2, 7, 1, 3, 4, 5, 26, 8, 6, 10, 9, 12, 11, 30, 31, 29, 28, 35, 32, 37, 33, 36]
+    # priority_south_america = [2, 6, 1, 5, 0, 4, 8, 7, 3, 2, 29, 30, 31, 28, 36, 2, 3, 15, 8, 37, 32, 33, 34, 35, 7, 1, 6, 13, 11, 10, 9, 12, 14, 0, 4, 5, 21, 20, 24, 18, 22, 19, 23, 25, 17, 27, 26, 40, 39, 38, 41]
+    # priority_europe = [10, 14, 13, 15, 9, 11, 12, 4, 26, 16, 22, 7, 6, 5, 34, 36, 0, 1, 3, 2, 8, 32, 33, 37, 35, 30, 29, 31, 28, 18, 21, 20, 23, 17, 19, 24, 25, 27, 38, 40, 39, 41]
+    # priority_north_america = [2, 6, 1, 5, 0, 4, 8, 7, 3, 2, 30, 10, 9, 12, 31, 28, 21, 20, 29, 15, 11, 14, 27, 19, 23, 36, 34, 22, 16, 26, 25, 17, 18, 24, 40, 39, 41, 38]
+    # priority_asia = [16, 21, 22, 24, 18, 17, 26, 20, 23, 25, 19, 27, 0, 14, 13, 11, 12, 15,]
+
+    # # 获取每个领土所在的大洲
+    # territory_to_continent = {}
+    # continents = {
+    #     "north_america": [6, 1, 5, 0, 4, 8, 7, 3, 2],
+    #     "europe": [9, 10, 11, 12, 13, 14, 15],
+    #     "asia": [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],
+    #     "south_america": [28, 29, 30, 31],
+    #     "africa": [32, 33, 34, 35, 36, 37],
+    #     "australia": [40, 39, 38, 41]
+    # }
+    # for continent, territories in continents.items():
+    #     for territory in territories:
+    #         territory_to_continent[territory] = continent
+
+    # # 计算每个我方领土的威胁评级
+    # # threat_ratings = {territory: threat_count(game, territory, 2, 0.25) for territory in border_territories}
+    # threat_ratings = {territory: threat_adjacent_max_count(game, territory) for territory in border_territories}
+
+    # # 选择放置兵力的领土
+    # # 通过周围的威胁来均匀放置兵力，运用priority list的顺序对他们进行一次检测，如果当前territory的兵力<=周围的威胁总和，就放置兵力
+    # priority_list = []
+    # if glb["claim_mode"] == "africa":
+    #     priority_list = priority_africa
+    # elif glb["claim_mode"] == "australia":
+    #     priority_list = priority_aus
+    # elif glb["claim_mode"] == "south_america":
+    #     priority_list = priority_south_america
+    # elif glb["claim_mode"] == "europe":
+    #     priority_list = priority_europe
+    # elif glb["claim_mode"] == "north_america":
+    #     priority_list = priority_north_america
+    # else:
+    #     priority_list = priority_asia
+
+    # # 选择放置兵力的领土
+    # placement = None
+    # for territory in priority_list:
+    #     # adjustment = 0.8
+    #     adjustment = 0
+    #     # TODO
+    #     if glb["claim_mode"] == "australia" or territory in [24, 38, 39, 40, 41]:
+    #         pass
+    #     else:
+    #         if game.state.territories[territory].troops >= 10:
+    #             continue
+    #     if territory in border_territories and game.state.territories[territory].troops <= threat_ratings[territory] + adjustment:
+    #         print("threat rating", threat_ratings[territory], flush=True)
+    #         placement = territory
+    #         break
+
+    # if placement is None:
+    #     # 如果没有与主要攻占策略相关的领土，选择威胁评级最高的领土放置兵力
+    #     placement = max(threat_ratings, key=threat_ratings.get)
 
 
-    # 获取每个领土所在的大洲
-    territory_to_continent = {}
-    continents = {
-        "north_america": [6, 1, 5, 0, 4, 8, 7, 3, 2],
-        "europe": [9, 10, 11, 12, 13, 14, 15],
-        "asia": [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],
-        "south_america": [28, 29, 30, 31],
-        "africa": [32, 33, 34, 35, 36, 37],
-        "australia": [40, 39, 38, 41]
-    }
-    for continent, territories in continents.items():
+    # 
+
+    def find_connected_components(territories: set) -> list:
+        """Find connected components in the given territories."""
+        visited = set()
+        components = []
+
+        def dfs(territory, component):
+            stack = [territory]
+            while stack:
+                current = stack.pop()
+                if current not in visited:
+                    visited.add(current)
+                    component.append(current)
+                    adjacent = set(game.state.map.get_adjacent_to(current))
+                    stack.extend(adjacent.intersection(territories))
+        
         for territory in territories:
-            territory_to_continent[territory] = continent
+            if territory not in visited:
+                component = []
+                dfs(territory, component)
+                components.append(component)
+        
+        return components
 
-    # 计算每个我方领土的威胁评级
-    # threat_ratings = {territory: threat_count(game, territory, 2, 0.25) for territory in border_territories}
-    threat_ratings = {territory: threat_adjacent_max_count(game, territory) for territory in border_territories}
-
-    # 选择放置兵力的领土
-    # 通过周围的威胁来均匀放置兵力，运用priority list的顺序对他们进行一次检测，如果当前territory的兵力<=周围的威胁总和，就放置兵力
-    priority_list = []
-    if glb["claim_mode"] == "africa":
-        priority_list = priority_africa
-    elif glb["claim_mode"] == "australia":
-        priority_list = priority_aus
-    elif glb["claim_mode"] == "south_america":
-        priority_list = priority_south_america
-    elif glb["claim_mode"] == "europe":
-        priority_list = priority_europe
+    self_components = find_connected_components(my_territories)
+    main_component = max(self_components, key=len)
+    main_component_border = game.state.get_all_border_territories(main_component)
+    if glb["claim_mode"] == "europe":
+        main_component_border = [x for x in main_component_border if x in [9, 10, 11, 12, 13, 14, 15]]
     elif glb["claim_mode"] == "north_america":
-        priority_list = priority_north_america
-    else:
-        priority_list = priority_asia
+        main_component_border = [x for x in main_component_border if x in [0, 1, 2, 3, 4, 5, 6, 7, 8]]
+    elif glb["claim_mode"] == "australia":
+        main_component_border = [x for x in main_component_border if x in [24, 39, 40, 41]]
 
-    # 选择放置兵力的领土
-    placement = None
-    for territory in priority_list:
-        # adjustment = 0.8
-        adjustment = 0
-        # TODO
-        if glb["claim_mode"] == "australia" or territory in [24, 38, 39, 40, 41]:
-            pass
-        else:
-            if game.state.territories[territory].troops >= 10:
-                continue
-        if territory in border_territories and game.state.territories[territory].troops <= threat_ratings[territory] + adjustment:
-            print("threat rating", threat_ratings[territory], flush=True)
-            placement = territory
-            break
+    if len(main_component_border) == 0:
+        main_component_border = game.state.get_all_border_territories(main_component)
 
-    if placement is None:
-        # 如果没有与主要攻占策略相关的领土，选择威胁评级最高的领土放置兵力
-        placement = max(threat_ratings, key=threat_ratings.get)
-
+    p = min(main_component_border, key=lambda t: game.state.territories[t].troops)
+    placement = p
+    
     return game.move_place_initial_troop(query, placement)
 
 
@@ -870,7 +911,7 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, glb: dict
             if attacker_t not in my_territories:
                 continue
             for target_continent, d in conquer_continent_difficulties.items():
-                if target_continent[:15] == "elimination_zone":
+                if target_continent[:16] == "elimination_zone":
                     continue
                 glb["tmp_flag"] = target_continent
                 target_range = glb["continents"][target_continent]
