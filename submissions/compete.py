@@ -1,5 +1,6 @@
 from collections import defaultdict, deque
 import random
+import sys
 import numpy as np
 from typing import Optional, Tuple, Union, cast
 from typing import List, Dict, Optional, Union
@@ -914,10 +915,12 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, glb: dict
             
             for attacker_t in attacker_list:
                 if attacker_t not in my_territories:
+                    print(f'attacker {attacker_t} error?!', flush=True, file=sys.stderr)
                     continue
                 attacker_troops = game.state.territories[attacker_t].troops
                 for target in glb["attack_priority_list"][attacker_t]:
                     if target not in target_range or attacker_troops <= difficulty:
+                        print(f"round {len(game.state.recording)}: target {target}; target_range {target_range}; attacker_t {attacker_t}; attacker_troops {attacker_troops}; difficulty {difficulty}", flush=True, file=sys.stderr)
                         continue
                     # print(f"attack: {attacker_t} -> {target}, troops: {attacker_troops} -> {game.state.territories[target].troops}, round: {len(game.state.recording)}", flush=True)
                     # print (target not in my_territories)
