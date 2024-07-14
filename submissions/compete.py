@@ -648,7 +648,7 @@ def calculate_continent_troops(game: Game, continent: List[int], my_territories:
 def update_conquer_continent_difficulties(game: Game, glb: dict) -> None:
     """Calculate the conquer difficulties for all continents and update glb, then sort the dictionary by difficulty."""
     my_territories = set(game.state.get_territories_owned_by(game.state.me.player_id))
-    continents = glb["continents"]
+    continents: Dict[str, List[int]] = glb["continents"]
     conquer_continent_difficulties = glb["conquer_continent_difficulties"]
 
     # Calculate difficulties
@@ -668,9 +668,10 @@ def update_conquer_continent_difficulties(game: Game, glb: dict) -> None:
         #     adjustment = 0
         # if continent_key == "north_america":
         #     adjustment = 0
-        if continent_key[:15] == "elimination_zone":
-            adjustment = - 7 + len(continent)//1.5
-        conquer_continent_difficulties[continent_key] = total_enemy_troops * 1.0 + adjustment
+        # TODO
+        if continent_key.startswith("elimination_zone"):
+            adjustment = - 7 + len(continent) // 1.5
+        conquer_continent_difficulties[continent_key] = floor(total_enemy_troops * 1.0 + adjustment)
 
     # Sort the dictionary by difficulty
     sorted_difficulties = dict(sorted(conquer_continent_difficulties.items(), key=lambda item: item[1]))
@@ -850,7 +851,7 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, glb: dict
     update_elimination_target(game, my_territories, border_territories, glb)
     mark_elimination_zone(game, my_territories, border_territories, glb)
     update_conquer_continent_difficulties(game, glb)
-    print(f"attack_mode: {glb['attack_mode']}, round: {len(game.state.recording)}",  flush=True)
+    print(f"attack_mode: {glb['attack_mode']}, round: {len(game.state.recording)}", flush=True)
 
     # 3. 检测周围威胁
 
@@ -891,6 +892,7 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, glb: dict
         return None
     
     if glb["attack_mode"] == "":
+        print(f"round {len(game.state.recording)}: passA; attack_mode {glb['attack_mode']}", flush=True)
         return game.move_attack_pass(query)
                 
 
@@ -923,6 +925,8 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, glb: dict
                     # print (attacker_troops >= 3)
                     if target not in my_territories and game.state.territories[target].troops <= attacker_troops and attacker_troops >= 3:
                         return game.move_attack(query, attacker_t, target, min(3, game.state.territories[attacker_t].troops - 1))
+                    else:
+                        print(f"round {len(game.state.recording)}: target {target}; my_territories {my_territories}; target_troops {game.state.territories[target].troops}, attacker_troops {attacker_troops}", flush=True)
         
         glb["attack_mode"] = "end_conquer_continent"
         
@@ -960,6 +964,7 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, glb: dict
     # 5. 如果威胁太大，阻止这次被检测的区域的攻击。
     # 6. 直到所有区域都威胁太大，我们交出move_attack_pass
 
+    print(f"round {len(game.state.recording)}: passB; attack_mode {glb['attack_mode']}", flush=True)
     return game.move_attack_pass(query)
 
 # 进攻后兵力移动
