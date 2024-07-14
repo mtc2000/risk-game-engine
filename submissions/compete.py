@@ -207,8 +207,10 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
 
     def is_continent_contested(continent):
         for territory in continent:
+            # there exists a claimed territory that is not mine, return true
             if territory not in unclaimed_territories and territory not in my_territories:
                 return True
+        # every territory is either unclaimed, or claimed and is mine.
         return False
     def bfs_weight(territory: int) -> int:
         queue = deque([territory])
@@ -231,48 +233,46 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
     if glb["claim_round"] == 1:
 
         if not is_continent_contested(aus):
-            for territory in aus:
+            for territory in priority_aus:
                 if territory in unclaimed_territories:
                     glb["claim_mode"] = "australia"
                     return game.move_claim_territory(query, territory)
                 
         if not is_continent_contested(south_america):
-            for territory in south_america:
+            for territory in priority_south_america:
                 if territory in unclaimed_territories:
                     glb["claim_mode"] = "south_america"
                     return game.move_claim_territory(query, territory)
 
         if not is_continent_contested(north_america):
-            for territory in north_america:
+            for territory in priority_north_america:
                 if territory in unclaimed_territories:
                     glb["claim_mode"] = "north_america"
                     return game.move_claim_territory(query, territory)
                 
         if not is_continent_contested(africa):
-            for territory in africa:
+            for territory in priority_africa:
                 if territory in unclaimed_territories:
                     glb["claim_mode"] = "africa"
                     return game.move_claim_territory(query, territory)
-                                            
+        
         if not is_continent_contested(europe):
-            for territory in europe:
+            for territory in priority_europe:
                 if territory in unclaimed_territories:
                     glb["claim_mode"] = "europe"
                     return game.move_claim_territory(query, territory)
-                
+        
+        # TODO: below cannot be reached? because there are only five players
         if not is_continent_contested(asia):
             for territory in priority_asia:
                 if territory in unclaimed_territories:
                     glb["claim_mode"] = "asia"
                     return game.move_claim_territory(query, territory)
-        
-        
-        for territory in africa:
+
+        for territory in priority_africa:
             if territory in unclaimed_territories:
                 glb["claim_mode"] = "africa"
                 return game.move_claim_territory(query, territory)
-                                        
-        
         
         glb["claim_mode"] = "in_group"
         max_weight_territory = max(unclaimed_territories, key=lambda t: bfs_weight(t))
@@ -280,33 +280,31 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
     elif glb["claim_round"] == 2:
 
         if not is_continent_contested(north_america):
-            for territory in north_america:
+            for territory in priority_north_america:
                 if territory in unclaimed_territories:
                     glb["claim_mode"] = "north_america"
                     return game.move_claim_territory(query, territory)
 
         if not is_continent_contested(aus):
-            for territory in aus:
+            for territory in priority_aus:
                 if territory in unclaimed_territories:
                     glb["claim_mode"] = "australia"
                     return game.move_claim_territory(query, territory)
-        
-         
-                
+
         if not is_continent_contested(south_america):
-            for territory in south_america:
+            for territory in priority_south_america:
                 if territory in unclaimed_territories:
                     glb["claim_mode"] = "south_america"
                     return game.move_claim_territory(query, territory)
                 
         if not is_continent_contested(africa):
-            for territory in africa:
+            for territory in priority_africa:
                 if territory in unclaimed_territories:
                     glb["claim_mode"] = "africa"
                     return game.move_claim_territory(query, territory)
                                             
         if not is_continent_contested(europe):
-            for territory in europe:
+            for territory in priority_europe:
                 if territory in unclaimed_territories:
                     glb["claim_mode"] = "europe"
                     return game.move_claim_territory(query, territory)
